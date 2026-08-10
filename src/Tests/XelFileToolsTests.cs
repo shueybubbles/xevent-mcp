@@ -8,11 +8,13 @@ namespace Bubbles.XEvent.Tests
     [TestFixture]
     public class XelFileToolsTests
     {
+        private static string TestFilePath => System.IO.Path.Combine(TestContext.CurrentContext.TestDirectory, "twoevents.xel");
+
         [Test]
         public async Task ListEventsInXelFile_read_full_file_returns_all_events()
         {
             // Arrange
-            var filePath = "twoevents.xel";
+            var filePath = TestFilePath;
             long maxEvents = 10;
             long byteOffset = 0;
             var cancellationToken = new System.Threading.CancellationToken();
@@ -23,10 +25,10 @@ namespace Bubbles.XEvent.Tests
         }
 
         [Test]
-        public async Task ListEventsInxXelFile_read_single_event_returns_byteoffset_for_subsequent_reads()
+        public async Task ListEventsInXelFile_read_single_event_returns_byteoffset_for_subsequent_reads()
         {
             // Arrange
-            var filePath = "twoevents.xel";
+            var filePath = TestFilePath;
             long maxEvents = 1;
             long byteOffset = 0;
             var cancellationToken = new System.Threading.CancellationToken();

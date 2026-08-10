@@ -10,4 +10,4 @@ Initial versions will work purely with files.
 
 ### V2+
 
-Over time, the server will support connections to SQL Server to read events from remote targets accessible via TSQL. For SQL Server Management Studio users, the MCP server will read stored local connection strings so Github Copilot in SSMS can use it without any extra configuration needed by the user.
+Over time, the server will support connections to SQL Server to read events from remote targets accessible via TSQL. For SQL Server Management Studio users, the MCP server will read stored local connection strings so GitHub Copilot in SSMS can use it without any extra configuration needed by the user.
