@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <NoWarn>CA1822</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="twoevents.xel" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\Server\Bubbles.XEvent.MCPServer.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+  </ItemGroup>
+</Project>

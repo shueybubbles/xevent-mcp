@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Server\Bubbles.XEvent.MCPServer.csproj" />
+  <Project Path="Tests\Bubbles.XEvent.Tests.csproj" />
+</Solution>
