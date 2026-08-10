@@ -1,0 +1,14 @@
+{
+  "inputs": [],
+  "servers": {
+    "Bubbles XEvents":{
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "Server/Bubbles.XEvent.MCPServer.csproj"
+      ]
+    }
+  }
+}
