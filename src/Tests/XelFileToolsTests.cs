@@ -30,6 +30,7 @@ namespace Bubbles.XEvent.Tests
             // Act
             var result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, byteOffset);
             var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 0, "", "session_id,database_name");
+            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 0, "non_existent_event");
             // Assert
             Assert.Multiple(() =>
             {
@@ -37,6 +38,7 @@ namespace Bubbles.XEvent.Tests
                 Assert.That(result, Contains.Substring("\"Fields\":{\"batch_text\":\"SELECT\\nSCHEMA_NAME(tbl.schema_id) AS [Schema],\\ntbl.name AS [Name],\\ntbl.object_id AS [ID]\\nFROM\\nsys.tables AS tbl\\nORDER BY\\n[Schema] ASC,[Name] ASC\"}"), "Expected the fields to contain the batch text.");
                 Assert.That(filteredResult, Contains.Substring("\"Fields\":{}"), "Expected the fields to be empty when specifying actions and fields.");
                 Assert.That(filteredResult, Contains.Substring("\"Actions\":{\"database_name\":\"powerpricing-shared\",\"session_id\":64}"), "Expected the actions to contain only the specified entries when specifying actions and fields.");
+                Assert.That(noResult, Is.Not.Null.And.StartsWith("The end of the file has been reached. Total events read: 0. Events: []"), "Expected no events to be returned when filtering by a non-existent event name.");
             });
         }
 
@@ -54,7 +56,17 @@ namespace Bubbles.XEvent.Tests
             Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset 25109"));
 
             result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109);
-            Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset 25325. Events: [{\"Name\":\"sql_batch_starting\",\"UUID\":\"64e8eccc-1de0-405c-9b49-a4ea488fe9a4\","));
+            var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109, "", "session_id,database_name");
+            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109, "non_existent_event");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset 25325. Events: [{\"Name\":\"sql_batch_starting\",\"UUID\":\"64e8eccc-1de0-405c-9b49-a4ea488fe9a4\","));
+                Assert.That(result, Contains.Substring("\"Fields\":{\"batch_text\":\"select * from sys.tables\"}"), "Expected the fields to contain the batch text.");
+                Assert.That(filteredResult, Contains.Substring("\"Fields\":{}"), "Expected the fields to be empty when specifying actions and fields.");
+                Assert.That(filteredResult, Contains.Substring("\"Actions\":{\"database_name\":\"powerpricing-shared\",\"session_id\":69}"), "Expected the actions to contain only the specified entries when specifying actions and fields.");
+                Assert.That(noResult, Is.Not.Null.And.StartsWith("The end of the file has been reached. Total events read: 0. Events: []"), "Expected no events to be returned when filtering by a non-existent event name.");
+            });
         }
 
         [TestCase(true)]

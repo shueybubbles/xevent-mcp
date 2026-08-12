@@ -2,13 +2,13 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "description": "Expose SQL Server extended events from files and session targets",
   "name": "io.github.shueybubbles/xe-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org",
       "identifier": "Bubbles.XEvent.MCPServer",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       },
