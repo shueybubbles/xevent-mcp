@@ -1,3 +1,4 @@
+using Bubbles.XEvent.MCPServer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,5 +13,7 @@ builder.Services
 .AddMcpServer()
 .WithStdioServerTransport()
 .WithToolsFromAssembly();
+
+builder.Services.AddSingleton<IUrlStreamProvider, UrlStreamProvider>();
 
 await builder.Build().RunAsync();

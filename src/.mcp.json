@@ -9,6 +9,16 @@
         "--project",
         "Server/Bubbles.XEvent.MCPServer.csproj"
       ]
+    },
+    "Bubbles Nuget Prod": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": ["Bubbles.XEvent.MCPServer@0.2.0", "--yes"]
+    },
+    "Bubbles Nuget dev": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": ["Bubbles.XEvent.MCPServer@0.2.0", "--yes", "--source", "https://apiint.nugettest.org/v3/index.json"]
     }
   }
 }
