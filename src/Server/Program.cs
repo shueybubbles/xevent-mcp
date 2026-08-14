@@ -14,6 +14,7 @@ builder.Services
 .WithStdioServerTransport()
 .WithToolsFromAssembly();
 
-builder.Services.AddSingleton<IUrlStreamProvider, UrlStreamProvider>();
+builder.Services.AddSingleton<IUrlStreamProvider, UrlStreamProvider>()
+    .AddSingleton<IConnectionProvider, EnvironmentConnectionProvider>();
 
 await builder.Build().RunAsync();

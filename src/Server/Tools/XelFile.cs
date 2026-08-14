@@ -15,7 +15,7 @@ namespace Bubbles.XEvent.MCPServer.Tools;
 [McpServerToolType]
 public static class XelFileTools
 {
-    private static readonly JsonSerializerOptions jsonOptions = new()
+    internal static readonly JsonSerializerOptions jsonOptions = new()
     {
         WriteIndented = false
     };
