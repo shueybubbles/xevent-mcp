@@ -14,7 +14,7 @@ namespace Bubbles.XEvent.MCPServer.Helpers
     /// <summary>
     /// Provides methods to discover data about extended event sessions and their targets.
     /// </summary>
-    public class XeSessionHelper
+    public class XeSessionHelper : IDisposable
     {
         public XeSessionHelper(string connectionString)
         {
@@ -27,6 +27,12 @@ namespace Bubbles.XEvent.MCPServer.Helpers
 
         public SqlConnection Connection { get; }
         private BaseXEStore XeStore { get; }
+
+        public void Dispose()
+        {
+            Connection.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         public string GetFileTargetFilePath(string session)
         {

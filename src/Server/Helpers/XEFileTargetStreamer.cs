@@ -35,24 +35,31 @@ namespace Bubbles.XEvent.MCPServer.Helpers
                 CommandTimeout = 0
             };
             await sqlConnection.OpenAsync(cancellationToken);
-            await xeConnectionOpen();
-            sqlCommand.Parameters.Add("@path", SqlDbType.NVarChar, 260).Value = path;
-            sqlCommand.Parameters.Add("@initial_file_name", SqlDbType.NVarChar, 260).Value = (object?)fileName ?? DBNull.Value;
-            sqlCommand.Parameters.Add("@initial_offset", SqlDbType.BigInt).Value = (object?)fileOffset ?? DBNull.Value;
-            using var dataReader = await sqlCommand.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
-            while (await dataReader.ReadAsync(cancellationToken))
+            try
             {
-                var fileXEvent = new FileXEvent(                    
-                    name: dataReader.GetString(0),
-                    eventData: dataReader.GetString(1),
-                    fileName: dataReader.GetString(2),
-                    fileOffset: dataReader.GetInt64(3),
-                    timestamp: dataReader.GetDateTime(4),
-                    moduleGuid: dataReader.GetGuid(5),
-                    packageGuid: dataReader.GetGuid(6),
-                    fieldsAndActions: fieldsAndActionsFilter ?? string.Empty
-                );
-                await xeEventHandler(fileXEvent);
+                await xeConnectionOpen();
+                sqlCommand.Parameters.Add("@path", SqlDbType.NVarChar, 260).Value = path;
+                sqlCommand.Parameters.Add("@initial_file_name", SqlDbType.NVarChar, 260).Value = (object?)fileName ?? DBNull.Value;
+                sqlCommand.Parameters.Add("@initial_offset", SqlDbType.BigInt).Value = (object?)fileOffset ?? DBNull.Value;
+                using var dataReader = await sqlCommand.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
+                while (await dataReader.ReadAsync(cancellationToken))
+                {
+                    var fileXEvent = new FileXEvent(
+                        name: dataReader.GetString(0),
+                        eventData: dataReader.GetString(1),
+                        fileName: dataReader.GetString(2),
+                        fileOffset: dataReader.GetInt64(3),
+                        timestamp: dataReader.GetDateTime(4),
+                        moduleGuid: dataReader.GetGuid(5),
+                        packageGuid: dataReader.GetGuid(6),
+                        fieldsAndActions: fieldsAndActionsFilter ?? string.Empty
+                    );
+                    await xeEventHandler(fileXEvent);
+                }
+            }
+            finally
+            {
+                await sqlConnection.CloseAsync();
             }
         }
     }

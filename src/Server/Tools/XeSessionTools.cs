@@ -147,7 +147,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             string? fileName,
             long? fileOffset)
         {
-            var sessionHelper = new XeSessionHelper(connection);
+            using var sessionHelper = new XeSessionHelper(connection);
             var fileReader = new XEFileTargetStreamer(sessionName, (SqlConnection)((ICloneable)sessionHelper.Connection).Clone());
             var eventCount = 0;
             await fileReader.ReadEventStream(

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -8,13 +7,9 @@ using Bubbles.XEvent.MCPServer.Helpers;
 using Bubbles.XEvent.MCPServer.Services;
 using Bubbles.XEvent.MCPServer.Tools;
 using Microsoft.Data.SqlClient;
-using Microsoft.Identity.Client;
-using Microsoft.Identity.Client.NativeInterop;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
-using ModelContextProtocol.Protocol;
 using NUnit.Framework;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Bubbles.XEvent.Tests
 {
@@ -95,7 +90,7 @@ namespace Bubbles.XEvent.Tests
             {
                 Assert.Ignore($"Environment variable '{EnvironmentConnectionProvider.ConnectionStringEnvVar}' is not set. Skipping test.");
             }
-            var sqlConnection = new SqlConnection(connectionString);
+            using var sqlConnection = new SqlConnection(connectionString);
             var server = new Server(new ServerConnection() { ConnectionString = connectionString });
             var filePath = string.Empty;
             using (var sessionDisposal = await CreateSession(Guid.NewGuid().ToString("N"), server, addFileTarget: true))
