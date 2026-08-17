@@ -20,10 +20,11 @@ Parameters:
  
  Parameters:
   - session name
-  - target name. Defaults to live target.
+  - target name. Defaults to live target. Can be "live" or "file".
   - maximum number of events to read. Default is 100.
   - maximum number of milliseconds to read data. Default is 10000.
-
+  - continuation token returned from a prior call. Used to continue reading from end of last read.
+  
   ## Environment variables
 
   ### CONNECTION_STRING

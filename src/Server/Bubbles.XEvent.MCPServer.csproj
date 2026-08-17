@@ -22,6 +22,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient.Extensions.Azure" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" />
     <PackageReference Include="Microsoft.SqlServer.XEvent.XELite" />
     <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
