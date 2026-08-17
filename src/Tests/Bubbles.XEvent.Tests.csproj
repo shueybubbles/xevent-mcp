@@ -7,7 +7,9 @@
     <Content Include="twoevents.xel" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="..\Server\Bubbles.XEvent.MCPServer.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.Data.SqlClient.Extensions.Azure" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
   </ItemGroup>
