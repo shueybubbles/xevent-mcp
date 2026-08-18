@@ -65,7 +65,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var stopWatch = Stopwatch.StartNew();
             var eventData = EmptyCollection;
-            var eventCount = 0;
+            int? eventCount = null;
             var eventList = new List<IXEvent>();
             var fileEventList = new List<IFileExtendedEvent>();
             var continuationTokenValue = string.Empty;
@@ -75,7 +75,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             {
                 if (targetName != "file")
                 {
-                    eventCount = await ReadLiveTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, eventList);
+                    eventCount = await ReadLiveTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, eventList).ConfigureAwait(false);
                 }
                 else
                 {
@@ -94,7 +94,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                             }
                         }
                     }
-                    eventCount = await ReadFileTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, fileEventList, fileName, fileOffset);
+                    eventCount = await ReadFileTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, fileEventList, fileName, fileOffset).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -115,6 +115,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             }
             if (eventList.Count > 0)
             {
+                eventCount ??= eventList.Count;
                 eventData = JsonSerializer.Serialize(eventList);
             }
             else if (fileEventList.Count > 0)
@@ -127,6 +128,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                         continuationTokenValue = $"More events may be available. Call again with continuation token '{lastEvent.FileName}:{lastEvent.FileOffset}' to resume reading the next position.";
                     }
                 }
+                eventCount ??= fileEventList.Count;
                 eventData = JsonSerializer.Serialize(fileEventList);
             }
             return ex != null
@@ -148,13 +150,13 @@ namespace Bubbles.XEvent.MCPServer.Tools
             long? fileOffset)
         {
             using var sessionHelper = new XeSessionHelper(connection);
-            var fileReader = new XEFileTargetStreamer(sessionName, (SqlConnection)((ICloneable)sessionHelper.Connection).Clone());
+            var fileReader = new XEFileTargetStreamer((SqlConnection)((ICloneable)sessionHelper.Connection).Clone());
             var eventCount = 0;
+            var filter = eventNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             await fileReader.ReadEventStream(
                 xeConnectionOpen: async () => { progress?.Report(new ProgressNotificationValue { Progress = 0, Message = $"Connected. Opening file for '{sessionName}'..." }); },
                 xeEventHandler: async (fileXEvent) =>
                 {
-                    var filter = eventNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     if (filter.Length > 0 && !filter.Contains(fileXEvent.Name))
                     {
                         return;
@@ -176,7 +178,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 fileName: fileName,
                 fileOffset: fileOffset,
                 fieldsAndActionsFilter: actionsAndFields,
-                cts.Token);
+                cts.Token).ConfigureAwait(false);
             return eventCount;
         }
 
@@ -213,7 +215,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 }
 
                 return Task.CompletedTask;
-            }, cts.Token);
+            }, cts.Token).ConfigureAwait(false);
             return eventCount;
         }
     }

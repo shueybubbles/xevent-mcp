@@ -26,7 +26,7 @@ namespace Bubbles.XEvent.Tests
             }
             var server = new Server(new ServerConnection() { ConnectionString = connectionString });
             var sessionName = Guid.NewGuid().ToString("N");
-            using var disposer = await CreateSession(sessionName, server);
+            using var disposer = CreateSession(sessionName, server);
 
             using var tokenSource = new System.Threading.CancellationTokenSource();
             using var eventRecorder = new SqlClientEventRecorder() { EnableTraceLogging = true };
@@ -56,7 +56,7 @@ namespace Bubbles.XEvent.Tests
             }
             var server = new Server(new ServerConnection() { ConnectionString = connectionString });
             var sessionName = Guid.NewGuid().ToString("N");
-            using var disposer = await CreateSession(sessionName, server, addFileTarget: true);
+            using var disposer = CreateSession(sessionName, server, addFileTarget: true);
 
             using var tokenSource = new System.Threading.CancellationTokenSource();
             using var eventRecorder = new SqlClientEventRecorder() { EnableTraceLogging = true };
@@ -77,7 +77,7 @@ namespace Bubbles.XEvent.Tests
             var continuationTokenEnd = results.IndexOf('\'', continuationTokenStart);
             var continuationToken = results[continuationTokenStart..continuationTokenEnd];
             var results2 = await XeSessionTools.ReadXeSessionTarget(sessionName, tokenSource.Token, null, new EnvironmentConnectionProvider(), targetName: "file", timeLimitMs: 30000, maxEvents: 1, continuationToken: continuationToken);
-            Assert.That(results2, Is.Not.Null.Or.Empty);
+            Assert.That(results2, Is.Not.Null.And.Contains("Total events read: 1"));
             Trace.TraceInformation(results2);
 
         }
@@ -93,13 +93,13 @@ namespace Bubbles.XEvent.Tests
             using var sqlConnection = new SqlConnection(connectionString);
             var server = new Server(new ServerConnection() { ConnectionString = connectionString });
             var filePath = string.Empty;
-            using (var sessionDisposal = await CreateSession(Guid.NewGuid().ToString("N"), server, addFileTarget: true))
+            using (var sessionDisposal = CreateSession(Guid.NewGuid().ToString("N"), server, addFileTarget: true))
             {
                 _ = await server.ExecutionManager.ConnectionContext.ExecuteScalarAsync("select count(name) from sys.tables");
                 await Task.Delay(1000); // Wait for the event to be written to the file target
                 filePath = sessionDisposal.FilePath;
             }
-            var streamer = new XEFileTargetStreamer(filePath, sqlConnection);
+            var streamer = new XEFileTargetStreamer(sqlConnection);
             using var tokenSource = new System.Threading.CancellationTokenSource();
             var eventCount = 0;
             IFileExtendedEvent foundEvent = null;
@@ -126,7 +126,7 @@ namespace Bubbles.XEvent.Tests
             Assert.That(foundEvent.Actions.Keys, Is.EqualTo(["event_sequence"]));
         }
 
-        private async Task<XeSessionDisposable> CreateSession(string sessionName, Server server, long maxDurationSeconds = 1000, bool addFileTarget = false)
+        internal static XeSessionDisposable CreateSession(string sessionName, Server server, long maxDurationSeconds = 1000, bool addFileTarget = false)
         {
             var onDatabase = server.DatabaseEngineType == DatabaseEngineType.SqlAzureDatabase ? "ON DATABASE" : "ON SERVER";
             var fileTarget = "";
@@ -170,6 +170,9 @@ ADD EVENT sqlserver.rpc_starting(
     ACTION(package0.event_sequence,sqlserver.database_name,sqlserver.session_id)
     WHERE ([package0].[equal_boolean]([sqlserver].[is_system],(0)))),
 ADD EVENT sqlserver.sql_batch_starting(
+    ACTION(package0.event_sequence,sqlserver.database_name,sqlserver.session_id)
+    WHERE ([package0].[equal_boolean]([sqlserver].[is_system],(0)))),
+ADD EVENT sqlserver.sql_batch_completed(
     ACTION(package0.event_sequence,sqlserver.database_name,sqlserver.session_id)
     WHERE ([package0].[equal_boolean]([sqlserver].[is_system],(0))))
 {fileTarget}
