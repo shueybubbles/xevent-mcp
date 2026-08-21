@@ -1,0 +1,29 @@
+name: Build & Publish NuGet Package (Trusted Publishing)
+
+on:
+  release:
+    types: [published] # Runs when you publish a GitHub Release
+
+permissions:
+  id-token: write   # Required for OIDC authentication
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Pack NuGet package
+        run: dotnet pack ./src/Server/Bubbles.XEvent.MCPServer.csproj --configuration Release -o ./artifacts
+
+      - name: Publish to NuGet.org (Trusted Publishing)
+        run: dotnet nuget push "./artifacts/*.nupkg" \
+              --source https://api.nuget.org/v3/index.json
