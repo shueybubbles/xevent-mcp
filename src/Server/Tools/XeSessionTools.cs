@@ -19,7 +19,8 @@ namespace Bubbles.XEvent.MCPServer.Tools
     [McpServerToolType]
     public static class XeSessionTools
     {
-
+        private static readonly HashSet<string> FileTargetNames = new(StringComparer.OrdinalIgnoreCase) { "file", "file target", "filetarget", "event_file" };
+        private static readonly HashSet<string> RingBufferTargetNames = new(StringComparer.OrdinalIgnoreCase) { "ring buffer", "ringbuffer", "ring_buffer", "ringbuffer target", "ringbuffertarget" };
         private static readonly string EmptyCollection = JsonSerializer.Serialize(new List<IXEvent>());
         /// <summary>
         /// Reads events from an extended event session target. Accepts maximum number of events to read and a time limit in milliseconds. It can also filter by event names and actions/fields to minimize data read. By default it returns 100 events from the live session.
@@ -39,7 +40,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             CancellationToken cancellationToken,
             IProgress<ProgressNotificationValue> progress,
             IConnectionProvider connectionProvider,
-            [Description("The name of the target within the session. Defaults to the live session. Must be 'live' or 'file'.")] string targetName = "",
+            [Description("The name of the target within the session. Defaults to the live session. Must be 'live', 'file', or 'ring buffer'.")] string targetName = "live",
             [Description("The maximum number of events to read. 0 means no maximum.")] int maxEvents = 100,
             [Description("The time limit in milliseconds for reading events. Default is 1000.")] int timeLimitMs = 1000,
             [Description("The comma-separated list of event names to include. Defaults to all events.")] string eventNames = "",
@@ -51,9 +52,9 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 throw new ArgumentException("Session name cannot be null or empty.", nameof(sessionName));
             }
 
-            if (targetName != "live" && targetName != "file" && targetName != string.Empty)
+            if (targetName != "" && targetName != "live" && !FileTargetNames.Contains(targetName) && !RingBufferTargetNames.Contains(targetName))
             {
-                return "Currently only the live target and the file target are supported.";
+                return "Currently only the live target, the file target, and the ring buffer target are supported.";
             }
 
             if (maxEvents < 0)
@@ -65,24 +66,21 @@ namespace Bubbles.XEvent.MCPServer.Tools
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var stopWatch = Stopwatch.StartNew();
             var eventData = EmptyCollection;
-            var eventCount = 0;
+            int? eventCount = null;
             var eventList = new List<IXEvent>();
             var fileEventList = new List<IFileExtendedEvent>();
+            var ringBufferEventList = new List<IRingBufferExtendedEvent>();
             var continuationTokenValue = string.Empty;
             Exception? ex = null;
             cts.CancelAfter(timeLimitMs);
             try
             {
-                if (targetName != "file")
-                {
-                    eventCount = await ReadLiveTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, eventList);
-                }
-                else
+                if (FileTargetNames.Contains(targetName))
                 {
                     string? fileName = null;
                     long? fileOffset = null;
-                    
-                    if (continuationToken != string.Empty) 
+
+                    if (continuationToken != string.Empty)
                     {
                         var fileOffsetStart = continuationToken.LastIndexOf(':');
                         if (fileOffsetStart != -1)
@@ -94,8 +92,18 @@ namespace Bubbles.XEvent.MCPServer.Tools
                             }
                         }
                     }
-                    eventCount = await ReadFileTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, fileEventList, fileName, fileOffset);
+                    eventCount = await ReadFileTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, fileEventList, fileName, fileOffset).ConfigureAwait(false);
                 }
+                else if (RingBufferTargetNames.Contains(targetName))
+                {
+                    eventCount = await ReadRingBufferTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, ringBufferEventList).ConfigureAwait(false);
+                }
+                else
+                {
+                    eventCount = await ReadLiveTarget(sessionName, progress, maxEvents, timeLimitMs, eventNames, actionsAndFields, connection, cts, stopWatch, eventList).ConfigureAwait(false);
+                }
+                
+                
             }
             catch (OperationCanceledException)
             {
@@ -115,6 +123,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
             }
             if (eventList.Count > 0)
             {
+                eventCount ??= eventList.Count;
                 eventData = JsonSerializer.Serialize(eventList);
             }
             else if (fileEventList.Count > 0)
@@ -127,13 +136,62 @@ namespace Bubbles.XEvent.MCPServer.Tools
                         continuationTokenValue = $"More events may be available. Call again with continuation token '{lastEvent.FileName}:{lastEvent.FileOffset}' to resume reading the next position.";
                     }
                 }
+                eventCount ??= fileEventList.Count;
                 eventData = JsonSerializer.Serialize(fileEventList);
             }
+            else if (ringBufferEventList.Count > 0)
+            {
+                eventCount ??= ringBufferEventList.Count;
+                eventData = JsonSerializer.Serialize(ringBufferEventList);
+            }
+
             return ex != null
                 ? $"Error reading events from session '{sessionName}': {ex.Message}. Total events read: {eventCount}. Events: {eventData}. Elapsed Time: {stopWatch.ElapsedMilliseconds} ms. {continuationTokenValue}"
                 : $"Total events read: {eventCount}. Events: {eventData}. Elapsed Time: {stopWatch.ElapsedMilliseconds} ms. {continuationTokenValue}";
         }
 
+        private static async Task<int> ReadRingBufferTarget(string sessionName,
+            IProgress<ProgressNotificationValue> progress,
+            int maxEvents,
+            int timeLimitMs,
+            string eventNames,
+            string actionsAndFields,
+            string connectionString,
+            CancellationTokenSource cts,
+            Stopwatch stopWatch,
+            List<IRingBufferExtendedEvent> eventList)
+        {
+            using var connection = new SqlConnection(connectionString);
+            var xeStream = new RingBufferTargetStreamer(connection, sessionName);
+            var eventCount = 0;
+            await xeStream.ReadEventStream(
+                async () => {
+                    progress?.Report(new ProgressNotificationValue {
+                        Progress = 0,
+                        Message = $"Connected. Reading events from ring buffer of session '{sessionName}'..." });
+                    await Task.CompletedTask;
+                },
+                xevent =>
+                {
+                    eventCount++;
+                    eventList.Add(xevent);
+                    progress?.Report(new ProgressNotificationValue
+                    {
+                        Message = $"Reading events from ring buffer of session '{sessionName}'...",
+                        Total = eventCount,
+                        Progress = maxEvents > 0 ? (float)eventCount / maxEvents : (float)stopWatch.ElapsedMilliseconds / timeLimitMs
+                    });
+                    if (maxEvents > 0 && eventCount >= maxEvents)
+                    {
+                        cts.Cancel();
+                    }
+                    return Task.CompletedTask;
+                },
+                maxEvents,
+                eventNames, 
+                actionsAndFields, cts.Token).ConfigureAwait(false);
+            return eventCount;
+        }
         private static async Task<int> ReadFileTarget(string sessionName, 
             IProgress<ProgressNotificationValue> progress, 
             int maxEvents, 
@@ -148,13 +206,13 @@ namespace Bubbles.XEvent.MCPServer.Tools
             long? fileOffset)
         {
             using var sessionHelper = new XeSessionHelper(connection);
-            var fileReader = new XEFileTargetStreamer(sessionName, (SqlConnection)((ICloneable)sessionHelper.Connection).Clone());
+            var fileReader = new XEFileTargetStreamer((SqlConnection)((ICloneable)sessionHelper.Connection).Clone());
             var eventCount = 0;
+            var filter = eventNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             await fileReader.ReadEventStream(
                 xeConnectionOpen: async () => { progress?.Report(new ProgressNotificationValue { Progress = 0, Message = $"Connected. Opening file for '{sessionName}'..." }); },
                 xeEventHandler: async (fileXEvent) =>
                 {
-                    var filter = eventNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     if (filter.Length > 0 && !filter.Contains(fileXEvent.Name))
                     {
                         return;
@@ -176,7 +234,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 fileName: fileName,
                 fileOffset: fileOffset,
                 fieldsAndActionsFilter: actionsAndFields,
-                cts.Token);
+                cts.Token).ConfigureAwait(false);
             return eventCount;
         }
 
@@ -213,7 +271,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 }
 
                 return Task.CompletedTask;
-            }, cts.Token);
+            }, cts.Token).ConfigureAwait(false);
             return eventCount;
         }
     }

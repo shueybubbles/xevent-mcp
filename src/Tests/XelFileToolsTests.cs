@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Bubbles.XEvent.MCPServer.Helpers;
 using Bubbles.XEvent.MCPServer.Services;
 using Bubbles.XEvent.MCPServer.Tools;
 using Microsoft.AspNetCore.Builder;
@@ -10,6 +12,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
+using Microsoft.SqlServer.Management.Common;
+using Microsoft.SqlServer.Management.Smo;
 using NUnit.Framework;
 
 namespace Bubbles.XEvent.Tests
@@ -28,9 +32,9 @@ namespace Bubbles.XEvent.Tests
             long byteOffset = 0;
             var cancellationToken = new CancellationToken();
             // Act
-            var result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, byteOffset);
-            var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 0, "", "session_id,database_name");
-            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 0, "non_existent_event");
+            var result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, urlStreamProvider:null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents, byteOffset);
+            var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents, 0, "", "session_id,database_name");
+            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents, 0, "non_existent_event");
             // Assert
             Assert.Multiple(() =>
             {
@@ -51,13 +55,13 @@ namespace Bubbles.XEvent.Tests
             long byteOffset = 0;
             var cancellationToken = new CancellationToken();
             // Act
-            var result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, byteOffset);
+            var result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, null, null, maxEvents, byteOffset);
             // Assert
             Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset 25109"));
 
-            result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109);
-            var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109, "", "session_id,database_name");
-            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, maxEvents, 25109, "non_existent_event");
+            result = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, null, null,  maxEvents, 25109);
+            var filteredResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, null, null, maxEvents, 25109, "", "session_id,database_name");
+            var noResult = await XelFileTools.ListEventsInXelFile(filePath, cancellationToken, null, null, null, maxEvents, 25109, "non_existent_event");
 
             Assert.Multiple(() =>
             {
@@ -79,7 +83,7 @@ namespace Bubbles.XEvent.Tests
             try
             {
                 var provider = new UrlStreamProvider(client);
-                var result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, maxEvents: 10, byteOffset: 0);
+                var result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, new EnvironmentConnectionProvider(), progress: null, maxEvents: 10, byteOffset: 0);
 
                 Assert.That(result, Is.Not.Null.And.StartsWith("The end of the stream has been reached. Total events read: 2. Events: [{\"Name\":\"sql_batch_starting\""));
             }
@@ -100,17 +104,61 @@ namespace Bubbles.XEvent.Tests
             try
             {
                 var provider = new UrlStreamProvider(client);
-                var result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, maxEvents: 1, byteOffset: 0);
+                var result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, new EnvironmentConnectionProvider(), progress: null, maxEvents: 1, byteOffset: 0);
 
                 Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset 25109"));
 
-                result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, maxEvents: 1, byteOffset: 25109);
+                result = await XelFileTools.ListEventsInXelFile(url.ToString(), CancellationToken.None, provider, new EnvironmentConnectionProvider(), progress: null, maxEvents: 1, byteOffset: 25109);
                 Assert.That(result, Is.Not.Null.And.StartsWith("Total events read: 1. More events may be available at byte offset ").And.Contains("Events: [{\"Name\":\"sql_batch_starting\",\"UUID\":\"64e8eccc-1de0-405c-9b49-a4ea488fe9a4\","));
             }
             finally
             {
                 await host.StopAsync();
                 host.Dispose();
+            }
+        }
+
+        [Test]
+        public async Task ListEventsInXelFile_with_useSqlServer_true_reads_file_target()
+        {
+            var connectionString = Environment.GetEnvironmentVariable(EnvironmentConnectionProvider.ConnectionStringEnvVar);
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Assert.Ignore($"Environment variable '{EnvironmentConnectionProvider.ConnectionStringEnvVar}' is not set. Skipping test.");
+            }
+            var server = new Server(new ServerConnection() { ConnectionString = connectionString });
+            var sessionName = Guid.NewGuid().ToString("N");
+            var filePath = string.Empty;
+            using (var session = XeSessionToolsTests.CreateSession(sessionName, server, addFileTarget: true))
+            {
+                _ = await server.ExecutionManager.ConnectionContext.ExecuteNonQueryAsync("select count(name) from sys.views");
+                _ = await server.ExecutionManager.ConnectionContext.ExecuteNonQueryAsync("select count(name) from sys.tables");
+                filePath = session.FilePath;
+            }
+            await Task.Delay(2000); // Wait for events to be written to the file target
+            using var recorder = new SqlClientEventRecorder() { EnableTraceLogging = true };
+            recorder.Start();
+            var results = await XelFileTools.ListEventsInXelFile(filePath, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, eventNames:"sql_batch_starting", maxEvents: 1, byteOffset: 0, useSqlServer: true);
+            Trace.TraceInformation($"Results: {results}");
+            Assert.That(results, Is.Not.Null.And.Contains("Total events read: 1. More events may be available at byte offset "));
+            Assert.That(results, Contains.Substring("sql_batch_starting"), "Expected the event name to be present in the results.");
+            // Get the file name and offset from the results and read from there
+            var offsetStartIndex = results.IndexOf("More events may be available at byte offset ") + "More events may be available at byte offset ".Length;
+            var offsetEndIndex = results.IndexOf(' ', offsetStartIndex);
+            var byteOffset = long.Parse(results[offsetStartIndex..offsetEndIndex]);
+            var nextFileNameStartIndex = results.IndexOf("in file '") + "in file '".Length;
+            var nextFileNameEndIndex = results.IndexOf('\'', nextFileNameStartIndex);
+            var nextFileName = results[nextFileNameStartIndex..nextFileNameEndIndex];
+            Assert.That(Path.GetExtension(nextFileName), Is.EqualTo(".xel"), "Expected the next file name to have a .xel extension.");
+            // Filed issue https://feedback.azure.com/d365community/idea/3a30375d-499b-f111-9b47-7c1e52f66aea. https files do not have accurate file_offset values, so we will skip this part of the test if the next file name is a URL.
+            if (!nextFileName.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                var results2 = await XelFileTools.ListEventsInXelFile(nextFileName, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents: 1, byteOffset: byteOffset, useSqlServer: true);
+                recorder.Stop();
+                Trace.TraceInformation($"Results2: {results2}");
+                Assert.That(results2, Is.Not.Null.And.Contains("Total events read: 1. More events may be available at byte offset "));
+                var nextOffset = long.Parse(results2[offsetStartIndex..offsetEndIndex]);
+                Assert.That(nextOffset, Is.GreaterThan(byteOffset), "Expected the next byte offset to be greater than the previous byte offset.");
             }
         }
 

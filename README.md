@@ -11,7 +11,7 @@ V0 will support a single connection string for working with one SQL server insta
 - 0.1.0 Support local XEL files
 - 0.2.0 Support URLs for XEL files in the cloud
 - 0.3.0 Support reading live target and file target
-- 0.4.0 Support ring buffer target
+- 0.4.0 Support ring buffer target, and using SQL Server to read XEL files by path instead of just by session
 
 ### V1
 

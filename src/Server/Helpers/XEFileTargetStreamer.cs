@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -10,11 +11,9 @@ namespace Bubbles.XEvent.MCPServer.Helpers
     /// <summary>
     /// Provides methods to read extended event data from a file target using the sys.fn_xe_file_target_read_file function.
     /// </summary>
-    /// <param name="filePath"></param>
     /// <param name="sqlConnection"></param>
-    public class XEFileTargetStreamer(string filePath, SqlConnection sqlConnection)
+    public class XEFileTargetStreamer(SqlConnection sqlConnection)
     {
-        private readonly string filePath = filePath;
         private readonly SqlConnection sqlConnection = sqlConnection;
 
         /// <summary>
@@ -41,6 +40,7 @@ namespace Bubbles.XEvent.MCPServer.Helpers
                 sqlCommand.Parameters.Add("@path", SqlDbType.NVarChar, 260).Value = path;
                 sqlCommand.Parameters.Add("@initial_file_name", SqlDbType.NVarChar, 260).Value = (object?)fileName ?? DBNull.Value;
                 sqlCommand.Parameters.Add("@initial_offset", SqlDbType.BigInt).Value = (object?)fileOffset ?? DBNull.Value;
+                Trace.TraceInformation("Querying XE file target: {0}, initial file name: {1}, initial offset: {2}", path, fileName ?? "null", fileOffset?.ToString() ?? "null");
                 using var dataReader = await sqlCommand.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
                 while (await dataReader.ReadAsync(cancellationToken))
                 {

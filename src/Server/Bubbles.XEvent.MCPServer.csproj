@@ -7,7 +7,7 @@
     <PublishSelfContained>true</PublishSelfContained>
     <RuntimeIdentifiers>win-x64;win-arm64;osx-arm64;linux-x64;linux-arm64;linux-musl-x64</RuntimeIdentifiers>
     <Nullable>enable</Nullable>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <!-- Set up the NuGet package to be an MCP server -->
     <PackAsTool>true</PackAsTool>
     <PackageType>McpServer</PackageType>
