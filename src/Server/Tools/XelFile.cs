@@ -37,8 +37,8 @@ public static class XelFileTools
         [Description("When true, uses SQL Server to read the file. Defaults to false.")] bool useSqlServer = false)
     {
 
-        var eventFilter = eventNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var actionsAndFieldsFilter = actionsAndFields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var eventFilter = eventNames.ToHashSet();
+        var actionsAndFieldsFilter = actionsAndFields.ToHashSet();
         var isHttpPath = urlStreamProvider != null
             && Uri.TryCreate(filePath, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
@@ -83,15 +83,15 @@ public static class XelFileTools
                     () => Task.CompletedTask,
                     xevent =>
                     {
-                        if (eventFilter.Length > 0 && !eventFilter.Contains(xevent.Name))
+                        if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                         {
                             return Task.CompletedTask; // Skip this event if it doesn't match the filter
                         }
                         eventCount++;
                         // If actionsAndFields is specified, filter the event's actions and fields
-                        if (actionsAndFieldsFilter.Length > 0)
+                        if (actionsAndFieldsFilter.Count > 0)
                         {                            
-                            xevent = new ExtendedEvent(xevent, actionsAndFieldsFilter);
+                            xevent = new ExtendedEvent(xevent, [.. actionsAndFieldsFilter]);
                         }
                         eventList.Add(xevent);
                         if (maxEvents > 0 && eventCount >= maxEvents)
@@ -115,15 +115,15 @@ public static class XelFileTools
                 await reader.ReadEventStream(
                     xevent =>
                     {
-                        if (eventFilter.Length > 0 && !eventFilter.Contains(xevent.Name))
+                        if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                         {
                             return Task.CompletedTask; // Skip this event if it doesn't match the filter
                         }
                         eventCount++;
                         // If actionsAndFields is specified, filter the event's actions and fields
-                        if (actionsAndFieldsFilter.Length > 0)
+                        if (actionsAndFieldsFilter.Count > 0)
                         {                            
-                            xevent = new ExtendedEvent(xevent, actionsAndFieldsFilter);
+                            xevent = new ExtendedEvent(xevent, [.. actionsAndFieldsFilter]);
                         }
                         eventList.Add(xevent);
                         if (maxEvents > 0 && eventCount >= maxEvents)
@@ -226,7 +226,7 @@ public static class XelFileTools
             : $"Total events read: {eventCount}. Events: {JsonSerializer.Serialize(eventList)}.";
     }
 
-    private static async Task<string> GetUrlStreamAsync(string filePath, IUrlStreamProvider urlStreamProvider, long maxEvents, long byteOffset, string[] eventFilter, string[] actionsAndFieldsFilter, CancellationToken cancellationToken)
+    private static async Task<string> GetUrlStreamAsync(string filePath, IUrlStreamProvider urlStreamProvider, long maxEvents, long byteOffset, HashSet<string> eventFilter, HashSet<string> actionsAndFieldsFilter, CancellationToken cancellationToken)
     {
 
         // If the file path is a URL, use the IUrlStreamProvider to get a stream and read from it.
@@ -245,15 +245,15 @@ public static class XelFileTools
                     () => Task.CompletedTask,
                     xevent =>
                     {
-                        if (eventFilter.Length > 0 && !eventFilter.Contains(xevent.Name))
+                        if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                         {
                             return Task.CompletedTask; // Skip this event if it doesn't match the filter
                         }
                         eventCount++;
                         // If actionsAndFields is specified, filter the event's actions and fields
-                        if (actionsAndFieldsFilter.Length > 0)
+                        if (actionsAndFieldsFilter.Count > 0)
                         {                            
-                            xevent = new ExtendedEvent(xevent, actionsAndFieldsFilter);
+                            xevent = new ExtendedEvent(xevent, [.. actionsAndFieldsFilter]);
                         }
                         eventList.Add(xevent);
                         if (maxEvents > 0 && eventCount >= maxEvents)
@@ -278,14 +278,14 @@ public static class XelFileTools
                     xevent =>
                     {
                         eventCount++;
-                        if (eventFilter.Length > 0 && !eventFilter.Contains(xevent.Name))
+                        if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                         {
                             return Task.CompletedTask; // Skip this event if it doesn't match the filter
                         }
                         // If actionsAndFields is specified, filter the event's actions and fields
-                        if (actionsAndFieldsFilter.Length > 0)
+                        if (actionsAndFieldsFilter.Count > 0)
                         {                            
-                            xevent = new ExtendedEvent(xevent, actionsAndFieldsFilter);
+                            xevent = new ExtendedEvent(xevent, [.. actionsAndFieldsFilter]);
                         }
                         eventList.Add(xevent);
                         if (maxEvents > 0 && eventCount >= maxEvents)

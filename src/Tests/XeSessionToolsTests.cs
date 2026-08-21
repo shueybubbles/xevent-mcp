@@ -47,6 +47,31 @@ namespace Bubbles.XEvent.Tests
         }
 
         [Test]
+        public async Task ReadXeSessionTarget_reads_ringbuffer_target()
+        {
+            var connectionString = Environment.GetEnvironmentVariable(EnvironmentConnectionProvider.ConnectionStringEnvVar);
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Assert.Ignore($"Environment variable '{EnvironmentConnectionProvider.ConnectionStringEnvVar}' is not set. Skipping test.");
+            }
+            var server = new Server(new ServerConnection() { ConnectionString = connectionString });
+            var sessionName = Guid.NewGuid().ToString("N");
+            using var disposer = CreateSession(sessionName, server);
+
+            using var tokenSource = new System.Threading.CancellationTokenSource();
+            using var eventRecorder = new SqlClientEventRecorder() { EnableTraceLogging = true };
+            eventRecorder.Start();
+            _ = await server.ExecutionManager.ConnectionContext.ExecuteScalarAsync("select count(name) from sys.tables");
+            _ = server.ExecutionManager.ConnectionContext.ExecuteScalar("select count(name) from sys.tables");
+            // Need more than 10 seconds to allow for Entra auth token refresh
+            var results = await XeSessionTools.ReadXeSessionTarget(sessionName, tokenSource.Token, null, new EnvironmentConnectionProvider(), targetName: "ring buffer", eventNames: "sql_batch_starting", actionsAndFields: "batch_text", timeLimitMs: 30000, maxEvents: 10);
+            eventRecorder.Stop();
+            var messages = string.Join(Environment.NewLine, eventRecorder.Events.SelectMany(e => e.Payload).Select(p => p.ToString()));
+            Trace.TraceInformation(results);
+            Assert.That(results, Is.Not.Null.And.Contains("select count(name) from sys.tables"));
+
+        }
+        [Test]
         public async Task ReadXeSessionTarget_reads_file_target()
         {
             var connectionString = Environment.GetEnvironmentVariable(EnvironmentConnectionProvider.ConnectionStringEnvVar);
@@ -147,12 +172,12 @@ namespace Bubbles.XEvent.Tests
                         var credential = new DatabaseScopedCredential(database, storageUrl) { Identity = "MANAGED IDENTITY" };
                         credential.Create();
                     }
-                    fileTarget = $"ADD TARGET package0.event_file(SET filename = N'{storageUrl}/{filePath}')";
+                    fileTarget = $",ADD TARGET package0.event_file(SET filename = N'{storageUrl}/{filePath}')";
                     filePath = storageUrl + "/" + filePath;
                 }
                 else
                 {
-                    fileTarget = $"ADD TARGET package0.event_file(SET filename = N'{filePath}')";
+                    fileTarget = $",ADD TARGET package0.event_file(SET filename = N'{filePath}')";
                 }
             }
             _ = server.ExecutionManager.ConnectionContext.ExecuteNonQuery(
@@ -175,7 +200,7 @@ ADD EVENT sqlserver.sql_batch_starting(
 ADD EVENT sqlserver.sql_batch_completed(
     ACTION(package0.event_sequence,sqlserver.database_name,sqlserver.session_id)
     WHERE ([package0].[equal_boolean]([sqlserver].[is_system],(0))))
-{fileTarget}
+ADD TARGET package0.ring_buffer{fileTarget}
 WITH (MAX_MEMORY=16384 KB,EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,MAX_DISPATCH_LATENCY=1 SECONDS,MAX_EVENT_SIZE=0 KB,MEMORY_PARTITION_MODE=PER_CPU,TRACK_CAUSALITY=ON,MAX_DURATION={maxDurationSeconds} SECONDS)");
             
             _ = server.ExecutionManager.ConnectionContext.ExecuteNonQuery($"ALTER EVENT SESSION [{sessionName}] {onDatabase} STATE = START");
