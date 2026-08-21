@@ -25,5 +25,4 @@ jobs:
         run: dotnet pack ./src/Server/Bubbles.XEvent.MCPServer.csproj --configuration Release -o ./artifacts
 
       - name: Publish to NuGet.org (Trusted Publishing)
-        run: dotnet nuget push "./artifacts/*.nupkg" \
-              --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push "./artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json
