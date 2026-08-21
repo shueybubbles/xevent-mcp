@@ -162,7 +162,7 @@ public static class XelFileTools
             return "No connections have been configured. Please configure a connection to use SQL Server to read the file.";
         }
         var pathPrefix = Path.ChangeExtension(filePath, null);
-        var filter = eventFilter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var filter = eventFilter.ToHashSet();
         var eventCount = 0;
         var eventList = new List<IFileExtendedEvent>();
         using var sqlConnection = new SqlConnection(connection.ConnectionString);
@@ -183,7 +183,7 @@ public static class XelFileTools
                 },
                 xeEventHandler: async (fileXEvent) =>
                 {
-                    if (filter.Length > 0 && !filter.Contains(fileXEvent.Name))
+                    if (filter.Count > 0 && !filter.Contains(fileXEvent.Name))
                     {
                         return;
                     }
