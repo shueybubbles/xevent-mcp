@@ -31,4 +31,4 @@ jobs:
           user: ${{ secrets.NUGET_pusher }}
 
       - name: Publish to NuGet.org (Trusted Publishing)
-        run: dotnet nuget push "./artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${{ steps.login.NUGET_API_KEY }}
+        run: dotnet nuget push "./artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
