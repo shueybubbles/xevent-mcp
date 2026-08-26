@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
+using Microsoft.Data.SqlClient;
 
 namespace Bubbles.XEvent.MCPServer.Services
 {
@@ -10,6 +11,11 @@ namespace Bubbles.XEvent.MCPServer.Services
     public interface IConnectionProvider
     {
         IEnumerable<SqlConnectionEntry> GetConnections();
+        string DefaultConnectionName { get; }
+
+        SqlConnectionEntry? GetConnection(string connectionName);
+
+        string EmptyListMessage { get; }
     }
 
     /// <summary>
@@ -26,6 +32,13 @@ namespace Bubbles.XEvent.MCPServer.Services
         {
             Name = name;
             ConnectionString = connectionString;
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            ServerName = builder.DataSource;
+            DatabaseName = builder.InitialCatalog;
+            AuthenticationType = builder.IntegratedSecurity ? "Windows Authentication" :
+                (builder.Authentication == SqlAuthenticationMethod.NotSpecified || builder.Authentication == SqlAuthenticationMethod.SqlPassword) ? 
+                "SQL Server Authentication" : builder.Authentication.ToString();
+            UserName = builder.UserID;
         }
 
         /// <summary>
@@ -33,6 +46,13 @@ namespace Bubbles.XEvent.MCPServer.Services
         /// </summary>
         public string ConnectionString { get; init; }
 
+        public string ServerName { get; }
+
+        public string DatabaseName { get; }
+
+        public string AuthenticationType { get; }
+
+        public string UserName { get; }
     }
 
     /// <summary>
@@ -42,11 +62,21 @@ namespace Bubbles.XEvent.MCPServer.Services
     {
         public const string ConnectionStringEnvVar = "CONNECTION_STRING";
 
+        public string DefaultConnectionName => "Default";
+
+        public SqlConnectionEntry? GetConnection(string connectionName)
+        {
+            var connection = connectionName == "Default" ? GetConnections().First() : null;
+            return connection;
+        }
+
         public IEnumerable<SqlConnectionEntry> GetConnections()
         {
             var connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvVar) 
                                    ?? "Server=localhost;Integrated Security=True;";
             yield return new SqlConnectionEntry("Default", connectionString);
         }
+
+        public string EmptyListMessage => "Set the CONNECTION_STRING environment variable to a valid SQL Server connection string.";
     }
 }

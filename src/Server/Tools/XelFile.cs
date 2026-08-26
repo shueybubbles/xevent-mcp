@@ -34,7 +34,7 @@ public static class XelFileTools
         [Description("The byte offset to start reading from. If byte offset > 0 or if useSqlServer is false, the filePath parameter must include the xel extension.")] long byteOffset = 0,
         [Description("The comma-separated list of event names to include. Defaults to all events.")] string eventNames = "",
         [Description("The comma-separated list of actions and field names to include. Defaults to all.")] string actionsAndFields = "",
-        [Description("When true, uses SQL Server to read the file. Defaults to false.")] bool useSqlServer = false)
+        [Description("When given, uses the specified SQL Server connection to read the file. Connection names are available from the xesession_list_connections tool.")] string connectionName = "")
     {
 
         var eventFilter = eventNames.ToHashSet();
@@ -43,6 +43,7 @@ public static class XelFileTools
             && Uri.TryCreate(filePath, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
+        var useSqlServer = !string.IsNullOrWhiteSpace(connectionName);
         if (!useSqlServer && !isHttpPath && !System.IO.File.Exists(filePath))
         {
             return $"The specified file '{filePath}' does not exist.";
@@ -58,7 +59,7 @@ public static class XelFileTools
 
         if (useSqlServer)
         {
-            return await GetSqlFileStreamAsync(connectionProvider, progress, filePath, maxEvents, byteOffset, eventNames, actionsAndFields, cancellationToken).ConfigureAwait(false);
+            return await GetSqlFileStreamAsync(connectionProvider, progress, connectionName, filePath, maxEvents, byteOffset, eventNames, actionsAndFields, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -154,12 +155,12 @@ public static class XelFileTools
     // use XEFileTargetStreamer to read the file using SQL Server. When byteOffset is 0, omit fileName parameter from the reader.
     // When byteOffset is > 0, pass the filePath with its xel extension to the reader. Return the events read as a JSON string, along with a message indicating whether the end of the file has been reached or if more events may be available at a specific byte offset.
 
-    private static async Task<string> GetSqlFileStreamAsync(IConnectionProvider connectionProvider, IProgress<ProgressNotificationValue> progress, string filePath, long maxEvents, long byteOffset, string eventFilter, string actionsAndFieldsFilter, CancellationToken cancellationToken)
+    private static async Task<string> GetSqlFileStreamAsync(IConnectionProvider connectionProvider, IProgress<ProgressNotificationValue> progress, string connectionName, string filePath, long maxEvents, long byteOffset, string eventFilter, string actionsAndFieldsFilter, CancellationToken cancellationToken)
     {
-        var connection = connectionProvider.GetConnections().FirstOrDefault();
-        if ( connection == null)
+        var connection = connectionProvider.GetConnection(connectionName);
+        if (connection == null)
         {
-            return "No connections have been configured. Please configure a connection to use SQL Server to read the file.";
+            return $"No connection with name '{connectionName}' was found. Use the xesession_list_connections tool to get a list of available connections.";
         }
         var pathPrefix = Path.ChangeExtension(filePath, null);
         var filter = eventFilter.ToHashSet();

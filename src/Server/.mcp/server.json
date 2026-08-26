@@ -1,14 +1,14 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
-  "description": "Expose SQL Server extended events from files and session targets",
+  "description": "Expose SQL Server extended events from files and session targets. Can use SQL connection strings saved in SSMS registered servers files or MRU connections, or a single connection set by the CONNECTION_STRING environment variable.",
   "name": "io.github.shueybubbles/xe-mcp",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "packages": [
     {
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org",
       "identifier": "Bubbles.XEvent.MCPServer",
-      "version": "0.4.0",
+      "version": "1.0.0",
       "transport": {
         "type": "stdio"
       },
@@ -20,7 +20,29 @@
           "variables": {
             "connection_string": {
               "description": "ADO.Net connection string to connect to the server. Defaults to localhost/Windows authentication.",
-              "isRequired": true,
+              "isRequired": false,
+              "isSecret": false
+            }
+          }
+        },
+        {
+          "name": "SSMS_CONNECTIONS",
+          "value": "{ssms_connections}",
+          "variables": {
+            "ssms_connections": {
+              "description": "Set to true to use SSMS registered servers and MRU connections instead of the CONNECTION_STRING variable",
+              "isRequired": false,
+              "isSecret": false
+            }
+          }
+        },
+        {
+          "name": "REGSRVR_FILE",
+          "value": "{regsrvr_file}",
+          "variables": {
+            "regsrvr_file": {
+              "description": "Path to the SSMS registered servers file. If not set, the default path will be used. Ignored if SSMS_CONNECTIONS is not set to true.",
+              "isRequired": false,
               "isSecret": false
             }
           }

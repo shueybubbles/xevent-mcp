@@ -138,7 +138,7 @@ namespace Bubbles.XEvent.Tests
             await Task.Delay(2000); // Wait for events to be written to the file target
             using var recorder = new SqlClientEventRecorder() { EnableTraceLogging = true };
             recorder.Start();
-            var results = await XelFileTools.ListEventsInXelFile(filePath, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, eventNames:"sql_batch_starting", maxEvents: 1, byteOffset: 0, useSqlServer: true);
+            var results = await XelFileTools.ListEventsInXelFile(filePath, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, eventNames:"sql_batch_starting", maxEvents: 1, byteOffset: 0, connectionName: "Default");
             Trace.TraceInformation($"Results: {results}");
             Assert.That(results, Is.Not.Null.And.Contains("Total events read: 1. More events may be available at byte offset "));
             Assert.That(results, Contains.Substring("sql_batch_starting"), "Expected the event name to be present in the results.");
@@ -153,7 +153,7 @@ namespace Bubbles.XEvent.Tests
             // Filed issue https://feedback.azure.com/d365community/idea/3a30375d-499b-f111-9b47-7c1e52f66aea. https files do not have accurate file_offset values, so we will skip this part of the test if the next file name is a URL.
             if (!nextFileName.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                var results2 = await XelFileTools.ListEventsInXelFile(nextFileName, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents: 1, byteOffset: byteOffset, useSqlServer: true);
+                var results2 = await XelFileTools.ListEventsInXelFile(nextFileName, CancellationToken.None, urlStreamProvider: null, connectionProvider: new EnvironmentConnectionProvider(), progress: null, maxEvents: 1, byteOffset: byteOffset, connectionName: "Default");
                 recorder.Stop();
                 Trace.TraceInformation($"Results2: {results2}");
                 Assert.That(results2, Is.Not.Null.And.Contains("Total events read: 1. More events may be available at byte offset "));
@@ -167,8 +167,8 @@ namespace Bubbles.XEvent.Tests
             var host = await new HostBuilder()
                 .ConfigureWebHost(webBuilder =>
                 {
-                    webBuilder.UseTestServer();
-                    webBuilder.Configure(app =>
+                    _ = webBuilder.UseTestServer();
+                    _ = webBuilder.Configure(app =>
                     {
                         app.Run(async context =>
                         {
