@@ -157,8 +157,8 @@ namespace Bubbles.XEvent.MCPServer.Tools
         }
 
         [McpServerTool(Name = "xesession_list_connections")]
-        [Description("Gets the available SQL server connections that can be used by xel_read_file or xesession_read_target tools.")]
-        public static async Task<string> GetAvailableConnections(IConnectionProvider connectionProvider)
+        [Description("Gets the available SQL server connections that can be used by xel_file_read or xesession_read_target tools.")]
+        public static string GetAvailableConnections(IConnectionProvider connectionProvider)
         {
             var connections = connectionProvider.GetConnections().ToArray();
             var availableConnections = new AvailableConnections

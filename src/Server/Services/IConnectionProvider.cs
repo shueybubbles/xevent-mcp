@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using Microsoft.Data.SqlClient;
 
 namespace Bubbles.XEvent.MCPServer.Services
@@ -44,6 +45,7 @@ namespace Bubbles.XEvent.MCPServer.Services
         /// <summary>
         /// The connection string used to connect to the SQL Server.
         /// </summary>
+        [JsonIgnore]
         public string ConnectionString { get; init; }
 
         public string ServerName { get; }

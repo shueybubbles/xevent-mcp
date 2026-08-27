@@ -31,7 +31,7 @@ public static class XelFileTools
         IConnectionProvider connectionProvider,
         IProgress<ProgressNotificationValue> progress,
         [Description("The maximum number of events to read. 0 means no maximum.")] long maxEvents = 100, 
-        [Description("The byte offset to start reading from. If byte offset > 0 or if useSqlServer is false, the filePath parameter must include the xel extension.")] long byteOffset = 0,
+        [Description("The byte offset to start reading from. If byte offset > 0 or if connectionName is not provided, the filePath parameter must include the xel extension.")] long byteOffset = 0,
         [Description("The comma-separated list of event names to include. Defaults to all events.")] string eventNames = "",
         [Description("The comma-separated list of actions and field names to include. Defaults to all.")] string actionsAndFields = "",
         [Description("When given, uses the specified SQL Server connection to read the file. Connection names are available from the xesession_list_connections tool.")] string connectionName = "")

@@ -24,6 +24,7 @@ namespace Bubbles.XEvent.MCPServer.Services
             fileWatcher.Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "SQL Server Management Studio");
             fileWatcher.Filter = RegisteredServersStore.RegisteredServersFileName;
             fileWatcher.Changed += (s, e) => ResetConnections();
+            fileWatcher.EnableRaisingEvents = true;
             ResetConnections();
         }
 
