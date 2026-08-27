@@ -17,5 +17,4 @@ V0 will support a single connection string for working with one SQL server insta
 
 V1 will enable connections to multiple SQL instances, using named connection strings.
 
-- 1.0 Add a tool to enumerate available connections. Support a yaml or json file that lists named SQL connection strings.
-- 1.1 Support MRU and registered server connections from the user's local SQL Server Management Studio installation
+- 1.0 Add a tool to enumerate available connections. Support MRU and registered server connections from the user's local SQL Server Management Studio installation
