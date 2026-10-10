@@ -13,6 +13,7 @@
        <PackageVersion Include="ModelContextProtocol" Version="2.1.0" />
        <PackageVersion Include="NUnit" Version="4.6.1" />
        <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
+       <PackageVersion Include="System.CommandLine" Version="2.0.12" />
    </ItemGroup>
    <ItemGroup Label="Pinned transitives">
        <PackageVersion Include="Azure.Identity" Version="1.18.0" />

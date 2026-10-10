@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>xelisten</AssemblyName>
+    <RootNamespace>Bubbles.XEvent.Listen</RootNamespace>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishSelfContained>true</PublishSelfContained>
+    <RuntimeIdentifiers>win-x64;win-arm64;osx-arm64;linux-x64;linux-arm64;linux-musl-x64</RuntimeIdentifiers>
+    <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
+    <!-- Set up the NuGet package to be an MCP server -->
+    <PackAsTool>true</PackAsTool>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>AI; SQL Server; extended events; xevents; cli; console</PackageTags>
+    <Description>An command line app that reads SQL Server extended events from xel files and session targets.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/shueybubbles/xevent-mcp</RepositoryUrl>
+    <Authors>shueybubbles</Authors>
+    <DebugType>embedded</DebugType>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient.Extensions.Azure" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" />
+    <PackageReference Include="Microsoft.SqlServer.XEvent.XELite" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <Compile Include="../Server/Helpers/ExtendedEvent.cs" />
+    <Compile Include="../Server/Helpers/Extensions.cs" />
+    <Compile Include="../Server/Helpers/RingBufferTargetStreamer.cs" />
+    <Compile Include="../Server/Helpers/XEFileTargetStreamer.cs" />
+    <Compile Include="../Server/Helpers/XeSessionHelper.cs" />
+    <Compile Include="../Server/Services/IUrlStreamProvider.cs" />
+  </ItemGroup>
+
+</Project>

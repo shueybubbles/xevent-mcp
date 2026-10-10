@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using System.Linq;
 using NUnit.Framework;
 namespace Bubbles.XEvent.Tests
 {

@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

@@ -9,6 +9,8 @@ indent_style = space
 # Code files
 [*.{cs, sql}]
 indent_size = 4
+# Header for code files
+file_header_template = Copyright (c) David Shiflet. All rights reserved.
 
 # JSON and XML files
 [*.{json,xml,runsettings} ]
