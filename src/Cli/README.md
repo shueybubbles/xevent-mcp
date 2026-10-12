@@ -30,6 +30,7 @@ xelisten file <path to xel file> <Common arguments>
 `xelisten session <session name> [options]`
 
 xelisten can read events from ring buffer, file, and live targets on a SQL Server extended event session.
+Press the `Escape` key to stop listening to events.
 
 #### Required parameters
 

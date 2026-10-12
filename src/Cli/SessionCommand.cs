@@ -37,7 +37,18 @@ namespace Bubbles.XEvent.Listen
             {
                 var context = new SessionCommandContext(parseResult);
                 context.PromptForPasswordIfRequired();
-                await ReadSession(context, cancellationToken);
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var escapeTask = WatchForEscapeKey(cts);
+                try
+                {
+                    await ReadSession(context, cts.Token);
+                }
+                finally
+                {
+                    cts.Cancel();
+                    await escapeTask.ConfigureAwait(false);
+                }
             });
             rootCommand.Subcommands.Add(command);
         }
@@ -171,6 +182,43 @@ namespace Bubbles.XEvent.Listen
                 fileOffset: null,
                 fieldsAndActionsFilter: actionsAndFieldsFilter,
                 cancellationToken: cts.Token).ConfigureAwait(false);
+        }
+
+        private static async Task WatchForEscapeKey(CancellationTokenSource cts)
+        {
+            if (Console.IsInputRedirected)
+            {
+                return;
+            }
+
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        var keyInfo = Console.ReadKey(intercept: true);
+                        if (keyInfo.Key == ConsoleKey.Escape)
+                        {
+                            cts.Cancel();
+                            return;
+                        }
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await Task.Delay(50, cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
         }
 
         public class SessionCommandContext : CommandContextBase
