@@ -10,7 +10,6 @@ namespace Bubbles.XEvent.Listen
     internal class DefaultEventOutput : IEventOutput
     {
         private readonly string delimiter = " ";
-        public void WriteByteOffsetRow(CommandContextBase context, ByteOffsetRow data) => Console.Error.WriteLine($"{data.ByteOffset}");
 
         public void WriteRow(CommandContextBase context, RowData data)
         {

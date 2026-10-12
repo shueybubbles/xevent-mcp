@@ -9,12 +9,12 @@ namespace Bubbles.XEvent.Listen
 {
     internal static class CommandLineExtensions
     {
-        public static T GetValueOrEnvVar<T>(this ParseResult parseResult, string optionName, string envVarName, T defaultValue = default!) where T : Enum
+        public static T GetValueOrEnvVar<T>(this ParseResult parseResult, string optionName, string envVarName, T defaultValue = default!) where T : struct, Enum
         {
             var value = parseResult.GetValue<T?>(optionName);
             if (value != null)
             {
-                return value;
+                return (T)value;
             }
 
             var envVarValue = Environment.GetEnvironmentVariable(envVarName);

@@ -11,18 +11,11 @@ namespace Bubbles.XEvent.Listen
 {
     public interface IEventOutput
     {
-        public void WriteRow(CommandContextBase context,  RowData data);
-        public void WriteByteOffsetRow(CommandContextBase context, ByteOffsetRow data);
+        void WriteRow(CommandContextBase context,  RowData data);
     }
 
     public class JsonEventOutput : IEventOutput
     {
-        public void WriteByteOffsetRow(CommandContextBase context, ByteOffsetRow data)
-        {
-            var row = JsonSerializer.Serialize(data);
-            Console.WriteLine(row);
-        }
-
         public void WriteRow(CommandContextBase context, RowData data)
         {
             var row = JsonSerializer.Serialize(data);
@@ -40,13 +33,7 @@ namespace Bubbles.XEvent.Listen
             Encoding = Encoding.UTF8,
             
         };
-        private static readonly XmlSerializer byteOffsetSerializer = new(typeof(ByteOffsetRow));
         private static readonly XmlSerializer rowDataSerializer = new(typeof(RowData));
-
-        public void WriteByteOffsetRow(CommandContextBase context, ByteOffsetRow data)
-        {
-            WriteSerializedRow(byteOffsetSerializer, data);
-        }
 
         public void WriteRow(CommandContextBase context, RowData data)
         {

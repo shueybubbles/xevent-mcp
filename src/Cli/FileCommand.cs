@@ -166,7 +166,6 @@ namespace Bubbles.XEvent.Listen
 
             var eventFilter = context.Events.ToHashSet();
             var actionsAndFieldsFilter = context.Fields.ToHashSet();
-            var eof = false;
             long eventCount = 0;
             long lastByteOffset = 0;
             try
@@ -197,7 +196,6 @@ namespace Bubbles.XEvent.Listen
                         },
                         _ =>
                         {
-                            eof = true;
                             cts.Cancel(); // Cancel the read operation when EOF is reached
                             return Task.CompletedTask;
                         },
@@ -229,15 +227,10 @@ namespace Bubbles.XEvent.Listen
                         },
                         cts.Token
                     ).ConfigureAwait(false);
-                    eof = true;
                 }
             }
             catch (OperationCanceledException)
             {
-                if (lastByteOffset > 0 && !eof)
-                {
-                    context.EventOutput.WriteByteOffsetRow(context, new ByteOffsetRow(lastByteOffset));
-                }
                 // Expected when maxEvents or eof is reached. Check if the incoming cancellation token is canceled, if so, rethrow the exception to propagate the cancellation.
                 cancellationToken.ThrowIfCancellationRequested();
             }

@@ -51,7 +51,7 @@ namespace Bubbles.XEvent.Listen
         public List<RowDataValue> XmlFields
         {
             get => [.. Fields.Select(x => new RowDataValue(x.Key, x.Value?.ToString() ?? string.Empty))];
-            set => Fields = value?.ToDictionary(x => x.Key, x => (object)x.Value) ?? new Dictionary<string, object>();
+            set => Fields = value?.ToDictionary(x => x.Key, x => (object)x.Value) ?? [];
         }
 
         [JsonIgnore]
@@ -60,7 +60,7 @@ namespace Bubbles.XEvent.Listen
         public List<RowDataValue> XmlActions
         {
             get => [.. Actions.Select(x => new RowDataValue(x.Key, x.Value?.ToString() ?? string.Empty))];
-            set => Actions = value?.ToDictionary(x => x.Key, x => (object)x.Value) ?? new Dictionary<string, object>();
+            set => Actions = value?.ToDictionary(x => x.Key, x => (object)x.Value) ?? [];
         }
     }
 
@@ -83,19 +83,5 @@ namespace Bubbles.XEvent.Listen
 
         [XmlText]
         public string Value { get; set; }
-    }
-
-    public class ByteOffsetRow
-    {
-        public ByteOffsetRow()
-        {
-        }
-
-        public ByteOffsetRow(long byteOffset)
-        {
-            ByteOffset = byteOffset;
-        }
-
-        public long ByteOffset { get; set; }
     }
 }

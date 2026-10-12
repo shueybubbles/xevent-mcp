@@ -58,7 +58,7 @@ xelisten has 2 file modes - direct file access, and SQL access. If the `--server
 
 In SQL mode, the `--byte-offset` and `--max-events` parameters have a different meaning than in direct file mode. Because `sys.fn_xe_file_target_read_file` returns non-unique `(file_name, file_offset)` tuples for all events in the same buffer, xelisten treats `byte offset` as `buffer offset`. When passed both `--byte-offset` and `--max-events`, xelisten may print more than the number of events requested. It reads to the end of the buffer where the requested numbered event was retrieved and prints the remaining events in the buffer. Every event printed is given `FileName` and `FileOffset` fields when `--byte-offset` is present. These values in the last event printed can be used as parameters to `xelisten` to resume reading from that point.
 
-For example, if `--max-events` is 8, and the 8th event is read in buffer with `file_offset` value 21100,  xelisten will continue to read events having `file_offset` 21100. It reaches `file_offset` value 29000, which it sets as the output byte offset.
+For example, if `--max-events` is 8, and the 8th event is read in buffer with `file_offset` value 21100,  xelisten will continue to read events having `file_offset` 21100 until it reaches an event with a different offset or file name, or the end of the file.
 
 
 #### Required parameters
@@ -69,7 +69,7 @@ For example, if `--max-events` is 8, and the 8th event is read in buffer with `f
 
 | parameter | description |
 | --------- | ----------- |
-| --byte-offset, -b | Byte offset in the file to start the read. Passing this argument causes xelisten to print the byte offset of the last event read at the end of execution, or nothing if no more events are available in the file. Scripts can read the value and pass it to future invocations to continue reading the same file. Pass 0 to read from the beginning. Only valid when used with both `--server` and `--byte-offset` |
+| --byte-offset, -b | Byte offset in the file to start the read. A `FileOffset` property is appended to every event printed, equal to the last byte offset of the event in the file.  This offset can be passed to subsequent `xelisten file` commands to resume scanning from the last position read. |
 | --file-name, -F | Path to the specific XEL file to start reading. Only valid when used with both `--server` and `--byte-offset` |
 
 
@@ -96,11 +96,8 @@ Efficient output in CSV format is somewhat tricky, particularly for XEL file inp
 
 If the user provides `--fields` and `--csv`, the output column names will match the order of the `--fields` list.
 
-If using `file` command and `--byte-offset` parameter with CSV or Default output, the final byte offset read will be written to stderr at the end of execution. `0` is written if the entire file was read.
-
 ### JSON and XML output notes
 
 Because xelisten is optimized for event streaming, it does not print enclosing collection notation around the output. Each event is a discrete JSON or XML `Event` element.
 
-If using the `file` command and `--byte-offset` parameter with JSON or XML output, the final byte offset read (or 0 if end of file was reached) is printed to stdout as a `ByteOffset` element. 
 
