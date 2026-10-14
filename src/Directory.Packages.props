@@ -12,6 +12,7 @@
        <PackageVersion Include="Microsoft.SqlServer.SqlManagementObjects" Version="181.36.0" />
        <PackageVersion Include="Microsoft.SqlServer.XEvent.XELite" Version="2024.2.5.1" />
        <PackageVersion Include="ModelContextProtocol" Version="2.1.0" />
+       <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
        <PackageVersion Include="NUnit" Version="4.6.1" />
        <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
        <PackageVersion Include="System.CommandLine" Version="2.0.12" />
@@ -19,5 +20,6 @@
    <ItemGroup Label="Pinned transitives">
        <PackageVersion Include="Azure.Identity" Version="1.18.0" />
        <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+       <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
    </ItemGroup>
 </Project>
