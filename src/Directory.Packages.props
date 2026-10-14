@@ -4,6 +4,7 @@
      <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
    </PropertyGroup>
    <ItemGroup Label="Pinned direct dependencies">
+       <PackageVersion Include="CsvHelper" Version="33.1.0" />
        <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
        <PackageVersion Include="Microsoft.Data.SqlClient.Extensions.Azure" Version="7.0.2" />
        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.0" />

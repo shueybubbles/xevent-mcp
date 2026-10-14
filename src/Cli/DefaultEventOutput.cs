@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Bubbles.XEvent.Listen
 {
-    internal class DefaultEventOutput : IEventOutput
+    public class DefaultEventOutput : IEventOutput
     {
         private readonly string delimiter = " ";
 

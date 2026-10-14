@@ -77,13 +77,13 @@ namespace Bubbles.XEvent.Listen
 
         public void SetPassword(string password) => connectionStringBuilder?.Password = password;
 
-
-        public IEventOutput EventOutput => OutputFormat switch
+        private IEventOutput output = null!;
+        public IEventOutput EventOutput => output ??= OutputFormat switch
         {
             OutputFormat.Default => new DefaultEventOutput(),
             OutputFormat.Json => new JsonEventOutput(),
             OutputFormat.Xml => new XmlEventOutput(),
-            // CSV isn't ready
+            OutputFormat.Csv => Fields.Length > 0 ? new CsvOutput() : throw new InvalidOperationException("CSV requires --fields"),
             _ => new DefaultEventOutput()
         };
         public void PromptForPasswordIfRequired()
