@@ -7,7 +7,7 @@
   Requires: dotnet SDK, tar, and on Windows: WiX (installed as a dotnet tool if missing) and choco (for the nupkg).
 .PARAMETER BaseUrl
   Download URL prefix used in the winget installer manifest, e.g.
-  https://github.com/shueybubbles/xevent-mcp/releases/download/v1.0.0
+  https://github.com/shueybubbles/xevent-mcp/releases/download/xelisten-v1.0.0
 #>
 [CmdletBinding()]
 param(
@@ -25,7 +25,7 @@ $raw = (Get-Content (Join-Path $root 'version.json') -Raw | ConvertFrom-Json).ve
 $parts = @($raw.Split('.'))
 while ($parts.Count -lt 3) { $parts += '0' }
 $version = ($parts[0..2]) -join '.'
-if (-not $BaseUrl) { $BaseUrl = "https://github.com/shueybubbles/xevent-mcp/releases/download/v$version" }
+if (-not $BaseUrl) { $BaseUrl = "https://github.com/shueybubbles/xevent-mcp/releases/download/xelisten-v$version" }
 Write-Host "Packaging xelisten $version"
 
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)

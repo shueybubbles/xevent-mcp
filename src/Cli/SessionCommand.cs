@@ -165,7 +165,7 @@ namespace Bubbles.XEvent.Listen
 
                     eventCount++;
                     context.EventOutput.WriteRow(context, new RowData(
-                        fileXEvent.Timestamp,
+                        DateTime.SpecifyKind(fileXEvent.Timestamp, DateTimeKind.Utc),
                         fileXEvent.Name,
                         new Dictionary<string, object>(fileXEvent.Fields.Select(kv => new KeyValuePair<string, object>(kv.Key, kv.Value))),
                         new Dictionary<string, object>(fileXEvent.Actions.Select(kv => new KeyValuePair<string, object>(kv.Key, kv.Value)))));
@@ -225,7 +225,6 @@ namespace Bubbles.XEvent.Listen
         {
             public SessionCommandContext(ParseResult parseResult) : base(parseResult)
             {
-                Server = string.IsNullOrEmpty(Server) ? "localhost" : Server;
                 Target = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
                 SessionName = parseResult.GetRequiredValue<string>("session-name");
             }

@@ -57,6 +57,7 @@ namespace Bubbles.XEvent.Listen
             {
                 Description = "Maximum number of seconds to listen to the session. Includes time to establish the SQL connection. Defaults to no timeout.",
                 Required = false,
+                Recursive = true,
                 Validators =
                 {
                     result =>

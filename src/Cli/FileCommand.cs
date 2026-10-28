@@ -53,7 +53,7 @@ namespace Bubbles.XEvent.Listen
             command.SetAction(async (parseResult, cancellationToken) =>
             {
                 var context = new FileCommandContext(parseResult);
-                if (!string.IsNullOrEmpty(context.Server))
+                if (context.HasSqlConnectionConfiguration)
                 {
                     context.PromptForPasswordIfRequired();
                 }
@@ -67,7 +67,7 @@ namespace Bubbles.XEvent.Listen
             var isHttpPath = Uri.TryCreate(context.FileName, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-            if (!string.IsNullOrEmpty(context.Server))
+            if (context.HasSqlConnectionConfiguration)
             {
                 await ReadSqlXelFile(context, cancellationToken);
             }
@@ -106,6 +106,7 @@ namespace Bubbles.XEvent.Listen
             long lastByteOffset = 0;
             var eventCount = 0L;
             var pathPrefix = Path.ChangeExtension(context.FileName, null);
+            string? lastFileName = null;
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try
             {
@@ -116,7 +117,10 @@ namespace Bubbles.XEvent.Listen
                     },
                     xeEventHandler: async (fileXEvent) =>
                     {                        
-                        if (context.MaxEvents > 0 && eventCount >= context.MaxEvents && fileXEvent.FileOffset != lastByteOffset)
+                        if (context.MaxEvents > 0 && eventCount >= context.MaxEvents
+                            && (context.ByteOffset < 0
+                                || fileXEvent.FileOffset != lastByteOffset
+                                || fileXEvent.FileName != lastFileName))
                         {
                             cts.Cancel();
                             return;
@@ -127,8 +131,9 @@ namespace Bubbles.XEvent.Listen
                         }
                         eventCount++;
                         lastByteOffset = fileXEvent.FileOffset;
+                        lastFileName = fileXEvent.FileName;
 
-                        var rowData = new RowData(fileXEvent.Timestamp, fileXEvent.Name,
+                        var rowData = new RowData(DateTime.SpecifyKind(fileXEvent.Timestamp, DateTimeKind.Utc), fileXEvent.Name,
                             new Dictionary<string, object>(fileXEvent.Fields.Select(kv => new KeyValuePair<string, object>(kv.Key, kv.Value))),
                             new Dictionary<string, object>(fileXEvent.Actions.Select(kv => new KeyValuePair<string, object>(kv.Key, kv.Value))));
                         
@@ -191,7 +196,11 @@ namespace Bubbles.XEvent.Listen
                             {
                                 cts.Cancel();
                             }
-                            context.EventOutput.WriteRow(context, new RowData(xevent.Timestamp, xevent.Name, xevent.Fields, xevent.Actions));
+                            var rowData = new RowData(xevent.Timestamp, xevent.Name, xevent.Fields, xevent.Actions)
+                            {
+                                FileOffset = xevent.XEventEndOffsetInBytes.ToString()
+                            };
+                            context.EventOutput.WriteRow(context, rowData);
                             return Task.CompletedTask;
                         },
                         _ =>

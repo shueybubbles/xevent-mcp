@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
@@ -29,7 +30,16 @@ namespace Bubbles.XEvent.Listen
             Actions = actions ?? new Dictionary<string, object>();
         }
 
+        [XmlIgnore]
         public DateTimeOffset TimeStamp { get; set; }
+
+        [JsonIgnore]
+        [XmlElement("TimeStamp")]
+        public string XmlTimeStamp
+        {
+            get => TimeStamp.ToString("O", CultureInfo.InvariantCulture);
+            set => TimeStamp = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
 
         public string EventName { get; set; }
 

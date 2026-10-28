@@ -1,4 +1,6 @@
-﻿// Copyright (c) David Shiflet. All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+// Modifications by @shueybubbles 2026 to use Bubbles namespace
 
 #nullable disable
 using System;

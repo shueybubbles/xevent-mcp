@@ -46,7 +46,7 @@ namespace Bubbles.XEvent.Listen
             using var stringWriter = new StringWriter(sb);
             using var xmlWriter = XmlWriter.Create(stringWriter, xmlWriterSettings);
             serializer.Serialize(xmlWriter, data);
-            Console.WriteLine(sb.ToString().Replace("\r", "&#xD").Replace("\n", "&#xA"));
+            Console.WriteLine(sb.ToString().Replace("\r", "&#xD;").Replace("\n", "&#xA;"));
         }
     }
 }

@@ -3,12 +3,6 @@ name: Build release packages
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish Chocolatey and winget manifests
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -19,13 +13,21 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build packages
+      - name: Build packages for release
+        if: github.event_name == 'release'
         shell: pwsh
-        run: ./packaging/build-packages.ps1 -BaseUrl "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name || 'v0.0.0' }}"
+        run: ./packaging/build-packages.ps1 -BaseUrl "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}"
+
+      - name: Build packages for manual run
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: ./packaging/build-packages.ps1
 
       - uses: actions/upload-artifact@v4
         with:
@@ -40,7 +42,7 @@ jobs:
         run: gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem artifacts/packages -File | ForEach-Object FullName) --clobber
 
       - name: Publish Chocolatey and winget manifests
-        if: github.event_name == 'release' || inputs.publish
+        if: github.event_name == 'release'
         shell: pwsh
         env:
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}

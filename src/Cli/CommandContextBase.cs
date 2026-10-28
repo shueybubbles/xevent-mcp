@@ -69,11 +69,18 @@ namespace Bubbles.XEvent.Listen
             }
         }
 
+        public bool HasSqlConnectionConfiguration =>
+            !string.IsNullOrEmpty(Server)
+            || !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("xelisten.connection-string"));
+
         public bool IsPasswordRequired => !string.IsNullOrEmpty(ConnectionString) &&
             !connectionStringBuilder!.IntegratedSecurity
             && !string.IsNullOrEmpty(connectionStringBuilder.UserID)
             && string.IsNullOrEmpty(connectionStringBuilder.Password)
-            && (connectionStringBuilder.Authentication == SqlAuthenticationMethod.NotSpecified || connectionStringBuilder.Authentication == SqlAuthenticationMethod.SqlPassword);
+            && (connectionStringBuilder.Authentication == SqlAuthenticationMethod.NotSpecified
+                || connectionStringBuilder.Authentication == SqlAuthenticationMethod.SqlPassword
+                || connectionStringBuilder.Authentication == SqlAuthenticationMethod.ActiveDirectoryPassword
+                || connectionStringBuilder.Authentication == SqlAuthenticationMethod.ActiveDirectoryServicePrincipal);
 
         public void SetPassword(string password) => connectionStringBuilder?.Password = password;
 
@@ -98,7 +105,7 @@ namespace Bubbles.XEvent.Listen
                 }
                 else
                 {
-                    Console.Write("Enter password:");
+                    Console.Error.Write("Enter password:");
                     var password = string.Empty;
                     ConsoleKey key;
 
@@ -111,13 +118,13 @@ namespace Bubbles.XEvent.Listen
                         {
                             // Remove the last character from the password and update the console
                             password = password[0..^1];
-                            Console.Write("\b \b");
+                            Console.Error.Write("\b \b");
                         }
                         else if (!char.IsControl(keyInfo.KeyChar))
                         {
                             // Append the character to the password and display an asterisk
                             password += keyInfo.KeyChar;
-                            Console.Write("*");
+                            Console.Error.Write("*");
                         }
                     } while (key != ConsoleKey.Enter);
 

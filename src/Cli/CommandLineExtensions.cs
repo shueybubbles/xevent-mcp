@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.Linq;
 using System.Text;
 
 namespace Bubbles.XEvent.Listen
@@ -66,7 +67,7 @@ namespace Bubbles.XEvent.Listen
             var value = parseResult.GetValue<string[]>(optionName);
             if (value != null && value.Length > 0)
             {
-                return value;
+                return [.. value.SelectMany(item => item.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))];
             }
 
             var envVarValue = Environment.GetEnvironmentVariable(envVarName);
