@@ -93,9 +93,7 @@ These parameters apply to both `session` and `file` commands. All are optional.
 
 ### CSV format notes
 
-Efficient output in CSV format is somewhat tricky, particularly for XEL file input when field and action names are not provided by the user. `xelisten` has to calculate the headers before it can print events. For `target`, `xelisten` will query the metadata of the session first so it knows which fields and actions are possibly included in the data so it can print the header row.
-
-If the user provides `--fields` and `--csv`, the output column names will match the order of the `--fields` list.
+The user must provide `--fields` to use `--csv`. The output column names will match the order of the `--fields` list. Values are encoded in an Excel-compatible manner.
 
 ### JSON and XML output notes
 

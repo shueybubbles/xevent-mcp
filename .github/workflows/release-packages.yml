@@ -1,0 +1,48 @@
+name: Build release packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish Chocolatey and winget manifests
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'xelisten-v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build packages
+        shell: pwsh
+        run: ./packaging/build-packages.ps1 -BaseUrl "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name || 'v0.0.0' }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/packages/**
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem artifacts/packages -File | ForEach-Object FullName) --clobber
+
+      - name: Publish Chocolatey and winget manifests
+        if: github.event_name == 'release' || inputs.publish
+        shell: pwsh
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+          WINGET_PAT: ${{ secrets.WINGET_PAT }}
+        run: ./packaging/publish-manifests.ps1

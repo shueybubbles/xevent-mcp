@@ -1,0 +1,25 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="xelisten"
+           Manufacturer="shueybubbles"
+           Version="$(var.Version)"
+           UpgradeCode="6b0f6f0e-3c2d-4c55-9a53-2f3f4c8a7d11"
+           Scope="perMachine"
+           Compressed="yes">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of xelisten is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="xelisten" />
+    </StandardDirectory>
+
+    <Component Id="MainExecutable" Directory="INSTALLFOLDER" Guid="*">
+      <File Id="xelisten.exe" Source="$(var.SourceDir)\xelisten.exe" KeyPath="yes" />
+      <File Id="NOTICE.txt" Source="$(var.SourceDir)\NOTICE.txt" />
+      <Environment Id="PathEntry" Name="PATH" Value="[INSTALLFOLDER]" Part="last" Action="set" System="yes" />
+    </Component>
+
+    <Feature Id="Main" Title="xelisten" Level="1">
+      <ComponentRef Id="MainExecutable" />
+    </Feature>
+  </Package>
+</Wix>

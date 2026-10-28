@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "thirdlicense": {
+      "version": "1.4.1",
+      "commands": [
+        "thirdlicense"
+      ],
+      "rollForward": false
+    }
+  }
+}
