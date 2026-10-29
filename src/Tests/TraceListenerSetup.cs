@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using System.Diagnostics;
 using NUnit.Framework;
 
 namespace Bubbles.XEvent.Tests

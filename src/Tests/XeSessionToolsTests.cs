@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -137,7 +139,7 @@ namespace Bubbles.XEvent.Tests
                     path: Path.ChangeExtension(filePath, null),
                     fileName: null,
                     fileOffset: null,
-                    fieldsAndActionsFilter: "batch_text,event_sequence",
+                    fieldsAndActionsFilter: ["batch_text", "event_sequence"],
                     cancellationToken: tokenSource.Token
                 );
             }

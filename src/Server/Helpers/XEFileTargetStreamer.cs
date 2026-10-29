@@ -1,7 +1,10 @@
-﻿using System;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -27,7 +30,7 @@ namespace Bubbles.XEvent.MCPServer.Helpers
         /// <param name="fieldsAndActionsFilter"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task ReadEventStream(HandleConnectionOpen xeConnectionOpen, HandleFileXEvent xeEventHandler, string path, string? fileName, long? fileOffset, string? fieldsAndActionsFilter, CancellationToken cancellationToken)
+        public async Task ReadEventStream(HandleConnectionOpen xeConnectionOpen, HandleFileXEvent xeEventHandler, string path, string? fileName, long? fileOffset, IEnumerable<string>? fieldsAndActionsFilter, CancellationToken cancellationToken)
         {
             using var sqlCommand = new SqlCommand("SELECT object_name, CAST(event_data AS XML) as event_data, file_name, file_offset, timestamp_utc, module_guid, package_guid from sys.fn_xe_file_target_read_file ( @path , null , @initial_file_name , @initial_offset )", sqlConnection)
             {
@@ -52,7 +55,7 @@ namespace Bubbles.XEvent.MCPServer.Helpers
                         timestamp: dataReader.GetDateTime(4),
                         moduleGuid: dataReader.GetGuid(5),
                         packageGuid: dataReader.GetGuid(6),
-                        fieldsAndActions: fieldsAndActionsFilter ?? string.Empty
+                        fieldsAndActions: fieldsAndActionsFilter ?? []
                     );
                     await xeEventHandler(fileXEvent);
                 }
@@ -98,8 +101,8 @@ namespace Bubbles.XEvent.MCPServer.Helpers
         /// <param name="eventData"></param>
         /// <param name="fileName"></param>
         /// <param name="fileOffset"></param>
-        /// <param name="fieldsAndActions">Comma-separated list of fields and actions to include</param>
-        public FileXEvent(DateTime timestamp, Guid moduleGuid, Guid packageGuid, string name, string eventData, string fileName, long fileOffset, string fieldsAndActions = "")
+        /// <param name="fieldsAndActions">List of fields and actions to include</param>
+        public FileXEvent(DateTime timestamp, Guid moduleGuid, Guid packageGuid, string name, string eventData, string fileName, long fileOffset, IEnumerable<string> fieldsAndActions)
         {
             Timestamp = timestamp;
             ModuleGuid = moduleGuid;
@@ -107,7 +110,8 @@ namespace Bubbles.XEvent.MCPServer.Helpers
             Name = name;
             FileName = fileName;
             FileOffset = fileOffset;
-            ParseEventData(eventData, fieldsAndActions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            // FileName is added by the streamer when byte offset is used to filter events, so we always include it in the parsed data
+            ParseEventData(eventData, [.. fieldsAndActions]);
         }
 
         private void ParseEventData(string eventData, string[] fieldsAndActionsFilter)

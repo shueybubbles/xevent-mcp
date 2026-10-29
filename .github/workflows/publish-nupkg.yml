@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   publish:
+    if: startsWith(github.event.release.tag_name, 'mcpserver-v')
     runs-on: ubuntu-latest
 
     steps:
@@ -20,6 +21,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Generate NOTICE.txt
+        shell: pwsh
+        run: ./packaging/build-notice.ps1
 
       - name: Pack NuGet package
         run: dotnet pack ./src/Server/Bubbles.XEvent.MCPServer.csproj --configuration Release -o ./artifacts

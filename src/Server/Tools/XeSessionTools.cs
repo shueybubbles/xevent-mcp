@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Copyright (c) David Shiflet. All rights reserved.
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -254,7 +256,7 @@ namespace Bubbles.XEvent.MCPServer.Tools
                 path: sessionHelper.GetFileTargetFilePath(sessionName),
                 fileName: fileName,
                 fileOffset: fileOffset,
-                fieldsAndActionsFilter: actionsAndFields,
+                fieldsAndActionsFilter: actionsAndFields.ToHashSet(),
                 cts.Token).ConfigureAwait(false);
             return eventCount;
         }

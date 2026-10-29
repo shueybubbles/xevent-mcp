@@ -1,3 +1,5 @@
+// Copyright (c) David Shiflet. All rights reserved.
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -59,7 +61,7 @@ public static class XelFileTools
 
         if (useSqlServer)
         {
-            return await GetSqlFileStreamAsync(connectionProvider, progress, connectionName, filePath, maxEvents, byteOffset, eventNames, actionsAndFields, cancellationToken).ConfigureAwait(false);
+            return await GetSqlFileStreamAsync(connectionProvider, progress, connectionName, filePath, maxEvents, byteOffset, eventNames, actionsAndFieldsFilter, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -155,7 +157,7 @@ public static class XelFileTools
     // use XEFileTargetStreamer to read the file using SQL Server. When byteOffset is 0, omit fileName parameter from the reader.
     // When byteOffset is > 0, pass the filePath with its xel extension to the reader. Return the events read as a JSON string, along with a message indicating whether the end of the file has been reached or if more events may be available at a specific byte offset.
 
-    private static async Task<string> GetSqlFileStreamAsync(IConnectionProvider connectionProvider, IProgress<ProgressNotificationValue> progress, string connectionName, string filePath, long maxEvents, long byteOffset, string eventFilter, string actionsAndFieldsFilter, CancellationToken cancellationToken)
+    private static async Task<string> GetSqlFileStreamAsync(IConnectionProvider connectionProvider, IProgress<ProgressNotificationValue> progress, string connectionName, string filePath, long maxEvents, long byteOffset, string eventFilter, IEnumerable<string> actionsAndFieldsFilter, CancellationToken cancellationToken)
     {
         var connection = connectionProvider.GetConnection(connectionName);
         if (connection == null)

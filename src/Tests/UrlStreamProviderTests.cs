@@ -1,3 +1,5 @@
+// Copyright (c) David Shiflet. All rights reserved.
+
 using System;
 using System.IO;
 using System.Linq;

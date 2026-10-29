@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>xelisten</id>
+    <version>$version$</version>
+    <title>xelisten</title>
+    <authors>shueybubbles</authors>
+    <projectUrl>https://github.com/shueybubbles/xevent-mcp</projectUrl>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/shueybubbles/xevent-mcp</projectSourceUrl>
+    <tags>sql-server extended-events xevents cli</tags>
+    <summary>Reads SQL Server extended events from xel files and session targets.</summary>
+    <description>A command line app that reads SQL Server extended events from xel files and live session targets.</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
