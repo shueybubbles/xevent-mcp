@@ -1,10 +1,13 @@
 name: Build release packages
 
-# Immutable releases: create the release as a DRAFT. "created" builds and attaches assets
-# to the draft; publishing the draft then triggers "published", which pushes manifests.
+# Immutable releases: assets must be attached before publishing. Pushing an xelisten-v* tag
+# builds the packages and attaches them to a DRAFT release (GitHub does not fire release
+# events for drafts). Publishing the draft then triggers the manifest publishing job.
 on:
+  push:
+    tags: ['xelisten-v*']
   release:
-    types: [created, published]
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -12,24 +15,23 @@ permissions:
 
 jobs:
   package:
-    if: github.event_name == 'workflow_dispatch' || (github.event.action == 'created' && github.event.release.draft && startsWith(github.event.release.tag_name, 'xelisten-v'))
+    if: github.event_name != 'release'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && github.event.release.target_commitish || '' }}
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Build packages for release
-        if: github.event_name == 'release'
+        if: github.ref_type == 'tag'
         shell: pwsh
-        run: ./packaging/build-packages.ps1 -BaseUrl "https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}"
+        run: ./packaging/build-packages.ps1 -BaseUrl "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
 
       - name: Build packages for manual run
-        if: github.event_name == 'workflow_dispatch'
+        if: github.ref_type != 'tag'
         shell: pwsh
         run: ./packaging/build-packages.ps1
 
@@ -39,10 +41,10 @@ jobs:
           path: artifacts/packages/**
 
       - name: Attach to draft release
-        if: github.event_name == 'release'
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ github.ref_name }}
           draft: true
           files: artifacts/packages/*
 
