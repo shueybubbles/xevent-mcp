@@ -91,8 +91,9 @@ namespace Bubbles.XEvent.Listen
             var eventFilter = context.Events.ToHashSet();
             var actionsAndFieldsFilter = context.Fields.ToHashSet();
             long eventCount = 0;
+            using var maxEventsReached = new ManualResetEvent(false);
 
-            await reader.ReadEventStream(xevent =>
+            var readEventStreamTask = reader.ReadEventStream(xevent =>
             {
                 if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                 {
@@ -108,11 +109,20 @@ namespace Bubbles.XEvent.Listen
                 context.EventOutput.WriteRow(context, new RowData(xevent.Timestamp, xevent.Name, xevent.Fields, xevent.Actions));
                 if (context.MaxEvents > 0 && eventCount >= context.MaxEvents)
                 {
+                    // work around https://github.com/dotnet/SqlClient/issues/4957 by not waiting for the ReadEventStream to complete, but instead signaling that the max events have been reached and canceling the token source.
+                    _ = maxEventsReached.Set();
                     cts.Cancel();
                 }
 
                 return Task.CompletedTask;
-            }, cts.Token).ConfigureAwait(false);
+            }, cts.Token);
+
+            var waitForMaxEventsTask = Task.Run(maxEventsReached.WaitOne, CancellationToken.None);
+            var completedTask = await Task.WhenAny(readEventStreamTask, waitForMaxEventsTask).ConfigureAwait(false);
+            if (completedTask == readEventStreamTask)
+            {
+                await readEventStreamTask.ConfigureAwait(false);
+            }
         }
 
         private static async Task ReadRingTarget(SessionCommandContext context, CancellationTokenSource cts)
