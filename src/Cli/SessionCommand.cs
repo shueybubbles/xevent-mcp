@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bubbles.XEvent.MCPServer.Helpers;
 using Microsoft.Data.SqlClient;
+using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.XEvent.XELite;
 
 namespace Bubbles.XEvent.Listen
@@ -25,13 +26,19 @@ namespace Bubbles.XEvent.Listen
             Required = false,
         };
 
+        private readonly Option<bool> startArgument = new("--start")
+        {
+            Description = "Start the session if it is not already running.",
+            Required = false,
+        };
 
         public void AddCommand(RootCommand rootCommand)
         {
             var command = new Command("session", "Listen to a specific Extended Events session.")
             {
                 sessionNameArgument,
-                targetArgument
+                targetArgument,
+                startArgument
             };
             command.SetAction(async (parseResult, cancellationToken) =>
             {
@@ -63,6 +70,11 @@ namespace Bubbles.XEvent.Listen
 
             try
             {
+                if (context.StartSessionIfNeeded)
+                {
+                    await EnsureSessionIsRunning(context, cts.Token).ConfigureAwait(false);
+                }
+
                 switch (context.Target)
                 {
                     case TargetType.Ring:
@@ -83,6 +95,29 @@ namespace Bubbles.XEvent.Listen
             catch (SqlException) when (cts.IsCancellationRequested)
             {
             }
+        }
+
+        private static async Task EnsureSessionIsRunning(SessionCommandContext context, CancellationToken cancellationToken)
+        {
+            using var sqlConnection = new SqlConnection(context.ConnectionString);
+            await sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+            var serverConnection = new ServerConnection(sqlConnection);
+            var databaseScope = serverConnection.DatabaseEngineType == DatabaseEngineType.SqlAzureDatabase;
+            var sessionsView = databaseScope ? "sys.dm_xe_database_sessions" : "sys.dm_xe_sessions";
+
+            using var checkCommand = new SqlCommand($"SELECT COUNT(*) FROM {sessionsView} WHERE name = @session_name", sqlConnection);
+            _ = checkCommand.Parameters.AddWithValue("@session_name", context.SessionName);
+            var activeSessionCount = Convert.ToInt32(await checkCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
+            if (activeSessionCount > 0)
+            {
+                return;
+            }
+
+            var onScope = databaseScope ? "ON DATABASE" : "ON SERVER";
+            var escapedSessionName = context.SessionName.Replace("]", "]]", StringComparison.Ordinal);
+            using var startCommand = new SqlCommand($"ALTER EVENT SESSION [{escapedSessionName}] {onScope} STATE = START", sqlConnection);
+            _ = await startCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task ReadLiveTarget(SessionCommandContext context, CancellationTokenSource cts)
@@ -231,17 +266,13 @@ namespace Bubbles.XEvent.Listen
             }
         }
 
-        public class SessionCommandContext : CommandContextBase
+        public class SessionCommandContext(ParseResult parseResult) : CommandContextBase(parseResult)
         {
-            public SessionCommandContext(ParseResult parseResult) : base(parseResult)
-            {
-                Target = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
-                SessionName = parseResult.GetRequiredValue<string>("session-name");
-            }
+            public string SessionName { get; } = parseResult.GetRequiredValue<string>("session-name");
 
-            public string SessionName { get; }
+            public TargetType Target { get; } = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
 
-            public TargetType Target { get; }
+            public bool StartSessionIfNeeded { get; } = parseResult.GetValueOrEnvVar("--start", "xelisten.start", false);
         }
     }
 }

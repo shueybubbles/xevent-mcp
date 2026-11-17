@@ -34,6 +34,33 @@ namespace Bubbles.XEvent.Listen
             return defaultValue;
         }
 
+        public static bool GetValueOrEnvVar(this ParseResult parseResult, string optionName, string envVarName, bool defaultValue = false)
+        {
+            var value = parseResult.GetValue<bool?>(optionName);
+            if (value != null)
+            {
+                return value.Value;
+            }
+
+            var envVarValue = Environment.GetEnvironmentVariable(envVarName);
+            if (string.IsNullOrEmpty(envVarValue))
+            {
+                return defaultValue;
+            }
+
+            if (envVarValue == "1")
+            {
+                return true;
+            }
+
+            if (envVarValue == "0")
+            {
+                return false;
+            }
+
+            return bool.TryParse(envVarValue, out var parsedValue) ? parsedValue : defaultValue;
+        }
+
         public static long GetValueOrEnvVar(this ParseResult parseResult, string optionName, string envVarName, long defaultValue = 0)
         {
             var value = parseResult.GetValue<long?>(optionName);
