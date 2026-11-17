@@ -15,7 +15,7 @@ Unless the user provides a `--fields` argument, values are sorted alphabetically
 ## Usage
 
 ```shell
-xelisten session <sessionname> [--target live|ring|file] [--start] [--timeout <count of seconds>]  [--server <path to server>] [--database <db name>] [--user <user id>] [--password <pwd>] [--auth <auth type>] <Common arguments>
+xelisten session <sessionname> [--target live|ring|file] [--start] [--stop] [--timeout <count of seconds>]  [--server <path to server>] [--database <db name>] [--user <user id>] [--password <pwd>] [--auth <auth type>] <Common arguments>
 ```
 
 ```shell
@@ -42,6 +42,7 @@ Press the `Escape` key to stop listening to events.
   |----------| ----------- |
   | --target, -t | name of the target. Must be one of `live`, `ring`, `file`. Defaults to `live`. |
   | --start | check whether the session is running and start it when needed before reading. |
+  | --stop | stop the session before xelisten exits. |
   | --timeout, -T | Max number of seconds to listen to the session. Includes time required to connect to the SQL Server. |
 
 ### Reading a XEL file directly

@@ -32,13 +32,20 @@ namespace Bubbles.XEvent.Listen
             Required = false,
         };
 
+        private readonly Option<bool> stopArgument = new("--stop")
+        {
+            Description = "Stop the session before exiting.",
+            Required = false,
+        };
+
         public void AddCommand(RootCommand rootCommand)
         {
             var command = new Command("session", "Listen to a specific Extended Events session.")
             {
                 sessionNameArgument,
                 targetArgument,
-                startArgument
+                startArgument,
+                stopArgument
             };
             command.SetAction(async (parseResult, cancellationToken) =>
             {
@@ -55,6 +62,22 @@ namespace Bubbles.XEvent.Listen
                 {
                     cts.Cancel();
                     await escapeTask.ConfigureAwait(false);
+
+                    if (context.StopSessionOnExit)
+                    {
+                        try
+                        {
+                            await StopSessionIfRunning(context, CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (SqlException ex) when (IsSessionNotRunningForStop(ex))
+                        {
+                        }
+                        catch (SqlException ex)
+                        {
+                            Console.Error.WriteLine($"Unable to stop session. SQL error {ex.Number}: {ex.Message}");
+                            Environment.ExitCode = 1;
+                        }
+                    }
                 }
             });
             rootCommand.Subcommands.Add(command);
@@ -107,7 +130,13 @@ namespace Bubbles.XEvent.Listen
             }
         }
 
-        private static async Task EnsureSessionIsRunning(SessionCommandContext context, CancellationToken cancellationToken)
+        private static Task EnsureSessionIsRunning(SessionCommandContext context, CancellationToken cancellationToken)
+            => SetSessionRunningState(context, shouldBeRunning: true, cancellationToken);
+
+        private static Task StopSessionIfRunning(SessionCommandContext context, CancellationToken cancellationToken)
+            => SetSessionRunningState(context, shouldBeRunning: false, cancellationToken);
+
+        private static async Task SetSessionRunningState(SessionCommandContext context, bool shouldBeRunning, CancellationToken cancellationToken)
         {
             using var sqlConnection = new SqlConnection(context.ConnectionString);
             await sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -119,19 +148,25 @@ namespace Bubbles.XEvent.Listen
             using var checkCommand = new SqlCommand($"SELECT COUNT(*) FROM {sessionsView} WHERE name = @session_name", sqlConnection);
             _ = checkCommand.Parameters.AddWithValue("@session_name", context.SessionName);
             var activeSessionCount = Convert.ToInt32(await checkCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
-            if (activeSessionCount > 0)
+            if (shouldBeRunning ? activeSessionCount > 0 : activeSessionCount == 0)
             {
                 return;
             }
 
             var onScope = databaseScope ? "ON DATABASE" : "ON SERVER";
+            var sessionState = shouldBeRunning ? "START" : "STOP";
             var escapedSessionName = context.SessionName.Replace("]", "]]", StringComparison.Ordinal);
-            using var startCommand = new SqlCommand($"ALTER EVENT SESSION [{escapedSessionName}] {onScope} STATE = START", sqlConnection);
-            _ = await startCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            using var stateCommand = new SqlCommand($"ALTER EVENT SESSION [{escapedSessionName}] {onScope} STATE = {sessionState}", sqlConnection);
+            _ = await stateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private static bool IsSessionNotFoundOrStopped(SqlException ex)
             => ex.Number == 25728 || ex.Message.Contains("could not be found", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsSessionNotRunningForStop(SqlException ex)
+            => IsSessionNotFoundOrStopped(ex)
+                || ex.Message.Contains("not started", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("not running", StringComparison.OrdinalIgnoreCase);
 
         private static async Task ReadLiveTarget(SessionCommandContext context, CancellationTokenSource cts)
         {
@@ -286,6 +321,8 @@ namespace Bubbles.XEvent.Listen
             public TargetType Target { get; } = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
 
             public bool StartSessionIfNeeded { get; } = parseResult.GetValueOrEnvVar("--start", "xelisten.start", false);
+
+            public bool StopSessionOnExit { get; } = parseResult.GetValueOrEnvVar("--stop", "xelisten.stop", false);
         }
     }
 }
