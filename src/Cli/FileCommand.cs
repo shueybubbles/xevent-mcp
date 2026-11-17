@@ -57,7 +57,16 @@ namespace Bubbles.XEvent.Listen
                 {
                     context.PromptForPasswordIfRequired();
                 }
-                await ReadXelFile(context, cancellationToken);
+
+                try
+                {
+                    await ReadXelFile(context, cancellationToken);
+                }
+                catch (SqlException ex)
+                {
+                    Console.Error.WriteLine($"SQL error {ex.Number}: {ex.Message}");
+                    Environment.ExitCode = 1;
+                }
             });
             rootCommand.Subcommands.Add(command);
         }

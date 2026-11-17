@@ -95,6 +95,16 @@ namespace Bubbles.XEvent.Listen
             catch (SqlException) when (cts.IsCancellationRequested)
             {
             }
+            catch (SqlException ex) when (IsSessionNotFoundOrStopped(ex))
+            {
+                Console.Error.WriteLine($"Session '{context.SessionName}' is not running. Start it first, or run with --start.");
+                Environment.ExitCode = 1;
+            }
+            catch (SqlException ex)
+            {
+                Console.Error.WriteLine($"SQL error {ex.Number}: {ex.Message}");
+                Environment.ExitCode = 1;
+            }
         }
 
         private static async Task EnsureSessionIsRunning(SessionCommandContext context, CancellationToken cancellationToken)
@@ -119,6 +129,9 @@ namespace Bubbles.XEvent.Listen
             using var startCommand = new SqlCommand($"ALTER EVENT SESSION [{escapedSessionName}] {onScope} STATE = START", sqlConnection);
             _ = await startCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        private static bool IsSessionNotFoundOrStopped(SqlException ex)
+            => ex.Number == 25728 || ex.Message.Contains("could not be found", StringComparison.OrdinalIgnoreCase);
 
         private static async Task ReadLiveTarget(SessionCommandContext context, CancellationTokenSource cts)
         {
