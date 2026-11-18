@@ -15,11 +15,15 @@ Unless the user provides a `--fields` argument, values are sorted alphabetically
 ## Usage
 
 ```shell
-xelisten session <sessionname> [--target live|ring|file] [--timeout <count of seconds>]  [--server <path to server>] [--database <db name>] [--user <user id>] [--password <pwd>] [--auth <auth type>] <Common arguments>
+xelisten session <sessionname> [--target live|ring|file] [--start] [--stop] [--timeout <count of seconds>]  [--server <path to server>] [--database <db name>] [--user <user id>] [--password <pwd>] [--auth <auth type>] <Common arguments>
 ```
 
 ```shell
 xelisten file <path to xel file> <Common arguments>
+```
+
+```shell
+xelisten script <sessionname> [--server <path to server>] [--database <db name>] [--user <user id>] [--password <pwd>] [--auth <auth type>]
 ```
 
  Individual parameters can be set using environment variables prefixed with `xelisten.`. For example, to set the target name, use environment variable `xelisten.target`.
@@ -41,7 +45,19 @@ Press the `Escape` key to stop listening to events.
   | argument | description |
   |----------| ----------- |
   | --target, -t | name of the target. Must be one of `live`, `ring`, `file`. Defaults to `live`. |
+  | --start | check whether the session is running and start it when needed before reading. |
+  | --stop | stop the session before xelisten exits. |
   | --timeout, -T | Max number of seconds to listen to the session. Includes time required to connect to the SQL Server. |
+
+### Scripting a session
+
+`xelisten script <session name> [options]`
+
+xelisten can generate a `CREATE EVENT SESSION` script for an existing session using SQL Server Management Objects.
+
+#### Required parameters
+
+    Name of the session on the server.
 
 ### Reading a XEL file directly
 
@@ -76,7 +92,7 @@ For example, if `--max-events` is 8, and the 8th event is read in buffer with `f
 
 ### Common parameters
 
-These parameters apply to both `session` and `file` commands. All are optional.
+These parameters apply to `session`, `file`, and `script` commands. All are optional.
 
   | parameter | description |
   |----------| ----------- |

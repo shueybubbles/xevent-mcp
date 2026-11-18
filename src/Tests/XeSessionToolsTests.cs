@@ -153,6 +153,27 @@ namespace Bubbles.XEvent.Tests
             Assert.That(foundEvent.Actions.Keys, Is.EqualTo(["event_sequence"]));
         }
 
+        [Test]
+        public void XeSessionHelper_GetSessionCreateScript_returns_create_script_for_existing_session()
+        {
+            var connectionString = Environment.GetEnvironmentVariable(EnvironmentConnectionProvider.ConnectionStringEnvVar);
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Assert.Ignore($"Environment variable '{EnvironmentConnectionProvider.ConnectionStringEnvVar}' is not set. Skipping test.");
+            }
+
+            var server = new Server(new ServerConnection() { ConnectionString = connectionString });
+            var sessionName = Guid.NewGuid().ToString("N");
+            using var disposer = CreateSession(sessionName, server);
+            using var helper = new XeSessionHelper(connectionString);
+
+            var script = helper.GetSessionCreateScript(sessionName);
+
+            Assert.That(script, Is.Not.Null.And.Not.Empty);
+            Assert.That(script, Does.Contain($"CREATE EVENT SESSION [{sessionName}]"));
+            Assert.That(script, Does.Contain("ADD EVENT sqlserver.sql_batch_starting"));
+        }
+
         internal static XeSessionDisposable CreateSession(string sessionName, Server server, long maxDurationSeconds = 1000, bool addFileTarget = false)
         {
             var onDatabase = server.DatabaseEngineType == DatabaseEngineType.SqlAzureDatabase ? "ON DATABASE" : "ON SERVER";

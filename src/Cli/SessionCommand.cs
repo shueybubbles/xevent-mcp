@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bubbles.XEvent.MCPServer.Helpers;
 using Microsoft.Data.SqlClient;
+using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.XEvent.XELite;
 
 namespace Bubbles.XEvent.Listen
@@ -25,13 +26,26 @@ namespace Bubbles.XEvent.Listen
             Required = false,
         };
 
+        private readonly Option<bool> startArgument = new("--start")
+        {
+            Description = "Start the session if it is not already running.",
+            Required = false,
+        };
+
+        private readonly Option<bool> stopArgument = new("--stop")
+        {
+            Description = "Stop the session before exiting.",
+            Required = false,
+        };
 
         public void AddCommand(RootCommand rootCommand)
         {
             var command = new Command("session", "Listen to a specific Extended Events session.")
             {
                 sessionNameArgument,
-                targetArgument
+                targetArgument,
+                startArgument,
+                stopArgument
             };
             command.SetAction(async (parseResult, cancellationToken) =>
             {
@@ -48,6 +62,22 @@ namespace Bubbles.XEvent.Listen
                 {
                     cts.Cancel();
                     await escapeTask.ConfigureAwait(false);
+
+                    if (context.StopSessionOnExit)
+                    {
+                        try
+                        {
+                            await StopSessionIfRunning(context, CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (SqlException ex) when (IsSessionNotRunningForStop(ex))
+                        {
+                        }
+                        catch (SqlException ex)
+                        {
+                            Console.Error.WriteLine($"Unable to stop session. SQL error {ex.Number}: {ex.Message}");
+                            Environment.ExitCode = 1;
+                        }
+                    }
                 }
             });
             rootCommand.Subcommands.Add(command);
@@ -63,6 +93,11 @@ namespace Bubbles.XEvent.Listen
 
             try
             {
+                if (context.StartSessionIfNeeded)
+                {
+                    await EnsureSessionIsRunning(context, cts.Token).ConfigureAwait(false);
+                }
+
                 switch (context.Target)
                 {
                     case TargetType.Ring:
@@ -83,7 +118,55 @@ namespace Bubbles.XEvent.Listen
             catch (SqlException) when (cts.IsCancellationRequested)
             {
             }
+            catch (SqlException ex) when (IsSessionNotFoundOrStopped(ex))
+            {
+                Console.Error.WriteLine($"Session '{context.SessionName}' is not running. Start it first, or run with --start.");
+                Environment.ExitCode = 1;
+            }
+            catch (SqlException ex)
+            {
+                Console.Error.WriteLine($"SQL error {ex.Number}: {ex.Message}");
+                Environment.ExitCode = 1;
+            }
         }
+
+        private static Task EnsureSessionIsRunning(SessionCommandContext context, CancellationToken cancellationToken)
+            => SetSessionRunningState(context, shouldBeRunning: true, cancellationToken);
+
+        private static Task StopSessionIfRunning(SessionCommandContext context, CancellationToken cancellationToken)
+            => SetSessionRunningState(context, shouldBeRunning: false, cancellationToken);
+
+        private static async Task SetSessionRunningState(SessionCommandContext context, bool shouldBeRunning, CancellationToken cancellationToken)
+        {
+            using var sqlConnection = new SqlConnection(context.ConnectionString);
+            await sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+            var serverConnection = new ServerConnection(sqlConnection);
+            var databaseScope = serverConnection.DatabaseEngineType == DatabaseEngineType.SqlAzureDatabase;
+            var sessionsView = databaseScope ? "sys.dm_xe_database_sessions" : "sys.dm_xe_sessions";
+
+            using var checkCommand = new SqlCommand($"SELECT COUNT(*) FROM {sessionsView} WHERE name = @session_name", sqlConnection);
+            _ = checkCommand.Parameters.AddWithValue("@session_name", context.SessionName);
+            var activeSessionCount = Convert.ToInt32(await checkCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
+            if (shouldBeRunning ? activeSessionCount > 0 : activeSessionCount == 0)
+            {
+                return;
+            }
+
+            var onScope = databaseScope ? "ON DATABASE" : "ON SERVER";
+            var sessionState = shouldBeRunning ? "START" : "STOP";
+            var escapedSessionName = context.SessionName.Replace("]", "]]", StringComparison.Ordinal);
+            using var stateCommand = new SqlCommand($"ALTER EVENT SESSION [{escapedSessionName}] {onScope} STATE = {sessionState}", sqlConnection);
+            _ = await stateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        private static bool IsSessionNotFoundOrStopped(SqlException ex)
+            => ex.Number == 25728 || ex.Message.Contains("could not be found", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsSessionNotRunningForStop(SqlException ex)
+            => IsSessionNotFoundOrStopped(ex)
+                || ex.Message.Contains("not started", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("not running", StringComparison.OrdinalIgnoreCase);
 
         private static async Task ReadLiveTarget(SessionCommandContext context, CancellationTokenSource cts)
         {
@@ -91,8 +174,9 @@ namespace Bubbles.XEvent.Listen
             var eventFilter = context.Events.ToHashSet();
             var actionsAndFieldsFilter = context.Fields.ToHashSet();
             long eventCount = 0;
+            var maxEventsReached = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            await reader.ReadEventStream(xevent =>
+            var readEventStreamTask = reader.ReadEventStream(xevent =>
             {
                 if (eventFilter.Count > 0 && !eventFilter.Contains(xevent.Name))
                 {
@@ -108,11 +192,25 @@ namespace Bubbles.XEvent.Listen
                 context.EventOutput.WriteRow(context, new RowData(xevent.Timestamp, xevent.Name, xevent.Fields, xevent.Actions));
                 if (context.MaxEvents > 0 && eventCount >= context.MaxEvents)
                 {
+                    // work around https://github.com/dotnet/SqlClient/issues/4957 by not waiting for the ReadEventStream to complete, but instead signaling that the max events have been reached and canceling the token source.
+                    _ = maxEventsReached.TrySetResult(true);
                     cts.Cancel();
                 }
 
                 return Task.CompletedTask;
-            }, cts.Token).ConfigureAwait(false);
+            }, cts.Token);
+
+            _ = readEventStreamTask.ContinueWith(
+                task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            var completedTask = await Task.WhenAny(readEventStreamTask, maxEventsReached.Task).ConfigureAwait(false);
+            if (completedTask == readEventStreamTask)
+            {
+                await readEventStreamTask.ConfigureAwait(false);
+            }
         }
 
         private static async Task ReadRingTarget(SessionCommandContext context, CancellationTokenSource cts)
@@ -221,17 +319,15 @@ namespace Bubbles.XEvent.Listen
             }
         }
 
-        public class SessionCommandContext : CommandContextBase
+        public class SessionCommandContext(ParseResult parseResult) : CommandContextBase(parseResult)
         {
-            public SessionCommandContext(ParseResult parseResult) : base(parseResult)
-            {
-                Target = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
-                SessionName = parseResult.GetRequiredValue<string>("session-name");
-            }
+            public string SessionName { get; } = parseResult.GetRequiredValue<string>("session-name");
 
-            public string SessionName { get; }
+            public TargetType Target { get; } = parseResult.GetValueOrEnvVar("--target", "xelisten.target", TargetType.Live);
 
-            public TargetType Target { get; }
+            public bool StartSessionIfNeeded { get; } = parseResult.GetValueOrEnvVar("--start", "xelisten.start", false);
+
+            public bool StopSessionOnExit { get; } = parseResult.GetValueOrEnvVar("--stop", "xelisten.stop", false);
         }
     }
 }
