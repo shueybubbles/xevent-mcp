@@ -23,7 +23,7 @@ namespace Bubbles.XEvent.Listen
             {
                 try
                 {
-                    return (T)Enum.Parse(typeof(T), envVarValue, ignoreCase: true);
+                    return Enum.Parse<T>(envVarValue, ignoreCase: true);
                 }
                 catch
                 {

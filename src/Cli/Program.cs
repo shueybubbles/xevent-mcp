@@ -13,6 +13,7 @@ namespace Bubbles.XEvent.Listen
             var root = CreateRootCommand();
             new SessionCommand().AddCommand(root);
             new FileCommand().AddCommand(root);
+            new ScriptCommand().AddCommand(root);
             return await root.Parse(args).InvokeAsync();
         }
 

@@ -2,6 +2,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
@@ -39,6 +40,17 @@ namespace Bubbles.XEvent.MCPServer.Helpers
             var fileTarget = xeSession.Targets["package0.event_file"] ?? throw new ArgumentException($"File target not found in session '{session}'.");
             var fileName = fileTarget.TargetFields["filename"]?.Value.ToString() ?? throw new InvalidOperationException($"File target in session '{session}' does not have a filename.");
             return Path.ChangeExtension(fileName, null); // Remove the extension to get the base path                
+        }
+
+        public string GetSessionCreateScript(string session)
+        {
+            var xeSession = XeStore.Sessions[session] ?? throw new ArgumentException($"Session '{session}' not found.");
+            if (xeSession.ScriptCreate() is not SfcTSqlScript script)
+            {
+                throw new InvalidOperationException($"Unable to generate script for session '{session}'.");
+            }
+
+            return string.Join(Environment.NewLine, script.GetScript().Cast<string>());
         }
 
     }
