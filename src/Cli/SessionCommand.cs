@@ -174,7 +174,7 @@ namespace Bubbles.XEvent.Listen
             var eventFilter = context.Events.ToHashSet();
             var actionsAndFieldsFilter = context.Fields.ToHashSet();
             long eventCount = 0;
-            using var maxEventsReached = new ManualResetEvent(false);
+            var maxEventsReached = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var readEventStreamTask = reader.ReadEventStream(xevent =>
             {
@@ -193,15 +193,20 @@ namespace Bubbles.XEvent.Listen
                 if (context.MaxEvents > 0 && eventCount >= context.MaxEvents)
                 {
                     // work around https://github.com/dotnet/SqlClient/issues/4957 by not waiting for the ReadEventStream to complete, but instead signaling that the max events have been reached and canceling the token source.
-                    _ = maxEventsReached.Set();
+                    _ = maxEventsReached.TrySetResult(true);
                     cts.Cancel();
                 }
 
                 return Task.CompletedTask;
             }, cts.Token);
 
-            var waitForMaxEventsTask = Task.Run(maxEventsReached.WaitOne, CancellationToken.None);
-            var completedTask = await Task.WhenAny(readEventStreamTask, waitForMaxEventsTask).ConfigureAwait(false);
+            _ = readEventStreamTask.ContinueWith(
+                task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            var completedTask = await Task.WhenAny(readEventStreamTask, maxEventsReached.Task).ConfigureAwait(false);
             if (completedTask == readEventStreamTask)
             {
                 await readEventStreamTask.ConfigureAwait(false);

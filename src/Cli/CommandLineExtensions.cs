@@ -36,10 +36,12 @@ namespace Bubbles.XEvent.Listen
 
         public static bool GetValueOrEnvVar(this ParseResult parseResult, string optionName, string envVarName, bool defaultValue = false)
         {
-            var value = parseResult.GetValue<bool?>(optionName);
-            if (value != null)
+            var optionSupplied = parseResult.Tokens.Any(token =>
+                string.Equals(token.Value, optionName, StringComparison.OrdinalIgnoreCase)
+                || token.Value.StartsWith(optionName + "=", StringComparison.OrdinalIgnoreCase));
+            if (optionSupplied)
             {
-                return value.Value;
+                return parseResult.GetValue<bool>(optionName);
             }
 
             var envVarValue = Environment.GetEnvironmentVariable(envVarName);
